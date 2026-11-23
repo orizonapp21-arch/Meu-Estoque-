@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Estoque</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-96.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#04060F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Estoque">
+<style>
+:root{
+  --acc:#00E5FF; --acc-rgb:0,229,255;
+  --acc2:#7C4DFF; --acc2-rgb:124,77,255;
+  --glass:.14; --blur:18px; --glow:1;
+  --ok:#39FF88; --bad:#FF4D6D; --warn:#FFC53D;
+  --txt:#EAF2FF; --mut:#8FA3C7;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#04060F;color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+
+/* fundo neon animado */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;background:radial-gradient(120% 80% at 50% 0%,#0B1233 0%,#04060F 60%)}
+.bg i{position:absolute;border-radius:50%;filter:blur(70px);opacity:calc(.45*var(--glow));animation:flutuar 14s ease-in-out infinite}
+.bg i:nth-child(1){width:60vmax;height:60vmax;left:-20vmax;top:-18vmax;background:rgba(var(--acc-rgb),.55)}
+.bg i:nth-child(2){width:55vmax;height:55vmax;right:-22vmax;top:30vh;background:rgba(var(--acc2-rgb),.5);animation-delay:-5s}
+.bg i:nth-child(3){width:45vmax;height:45vmax;left:5vmax;bottom:-22vmax;background:rgba(var(--acc-rgb),.35);animation-delay:-9s}
+body.sem-anim .bg i{animation:none}
+@keyframes flutuar{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(4vmax,3vmax) scale(1.12)}}
+
+#app{position:relative;z-index:1;height:100dvh;display:flex;flex-direction:column}
+.glass{background:rgba(255,255,255,var(--glass));border:1px solid rgba(255,255,255,calc(.07 + var(--glass)*.45));
+  backdrop-filter:blur(var(--blur)) saturate(150%);-webkit-backdrop-filter:blur(var(--blur)) saturate(150%);
+  box-shadow:0 10px 34px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);border-radius:20px}
+.neon{color:var(--acc);text-shadow:0 0 calc(14px*var(--glow)) rgba(var(--acc-rgb),.75)}
+
+/* topo */
+.top{padding:calc(var(--safe-t) + 12px) 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:.3px}
+.logo b{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 0 calc(18px*var(--glow)) rgba(var(--acc-rgb),.7)}
+.logo svg{width:19px;height:19px;stroke:#04060F;stroke-width:2.6;fill:none;stroke-linecap:round}
+.cnt{font-size:12px;color:var(--mut);padding:6px 12px;border-radius:999px}
+.cnt strong{color:var(--acc)}
+
+main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 14px calc(104px + var(--safe-b));-webkit-overflow-scrolling:touch}
+.view{display:none;animation:entra .28s ease}
+.view.on{display:block}
+@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* busca */
+.busca{position:sticky;top:0;z-index:5;padding:6px 0 10px}
+.sb{display:flex;align-items:center;gap:10px;padding:0 14px;height:60px;border-radius:20px;transition:.2s}
+.sb:focus-within{box-shadow:0 0 0 1.5px var(--acc),0 0 calc(30px*var(--glow)) rgba(var(--acc-rgb),.5)}
+.sb svg{width:24px;height:24px;stroke:var(--acc);fill:none;stroke-width:2.2;stroke-linecap:round;flex:none;filter:drop-shadow(0 0 calc(6px*var(--glow)) var(--acc))}
+.sb input{flex:1;min-width:0;background:none;border:0;outline:0;font-size:18px;font-weight:600}
+.sb input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.sb input::placeholder{color:var(--mut);font-weight:500}
+.sb button{background:rgba(255,255,255,.12);border:0;border-radius:50%;width:30px;height:30px;color:var(--txt);font-size:15px}
+.chips{display:flex;gap:8px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:8px 15px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);font-size:13px;font-weight:600;color:var(--mut)}
+.chip.on{color:#04060F;background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;box-shadow:0 0 calc(16px*var(--glow)) rgba(var(--acc-rgb),.6)}
+.info{font-size:12px;color:var(--mut);margin:4px 4px 10px}
+
+/* cartões de material */
+.card{padding:15px 16px;margin-bottom:12px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s}
+.card:active{transform:scale(.985)}
+.card::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--acc);box-shadow:0 0 calc(12px*var(--glow)) var(--acc)}
+.card.zero::before{background:var(--bad);box-shadow:0 0 calc(12px*var(--glow)) var(--bad)}
+.card.pend::before{background:var(--warn);box-shadow:0 0 calc(12px*var(--glow)) var(--warn)}
+.cod.pendc{font-size:21px;line-height:1.5;color:var(--warn);text-shadow:0 0 calc(12px*var(--glow)) rgba(255,197,61,.6);word-break:normal}
+.alertaP{display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:10px 14px;border-radius:16px;font-size:13.5px;font-weight:700;cursor:pointer;color:#FFE08A;
+  background:rgba(255,197,61,.14);border:1px solid rgba(255,197,61,.55);box-shadow:0 0 calc(18px*var(--glow)) rgba(255,197,61,.25)}
+.alertaP b{color:var(--warn)}
+.alertaP em{margin-left:auto;font-style:normal;font-size:12px;color:var(--mut);white-space:nowrap}
+.chip.pd{color:var(--warn);border-color:rgba(255,197,61,.5)}
+.chip.pd.on{color:#04060F;background:var(--warn);box-shadow:0 0 calc(16px*var(--glow)) rgba(255,197,61,.6)}
+/* cestas */
+.cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 100px}
+.cx{border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:11px 4px 10px;text-align:center;background:rgba(255,255,255,.06);color:var(--txt);cursor:pointer;min-width:0}
+.cx:active{transform:scale(.96)}
+.cx .lb{display:block;font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:800}
+.cx b{display:block;font-size:24px;line-height:1.25;color:var(--acc);text-shadow:0 0 calc(10px*var(--glow)) rgba(var(--acc-rgb),.7);overflow-wrap:anywhere}
+.cx b.t{font-size:14px;padding:5px 2px}
+.cx small{font-size:11.5px;color:var(--mut);font-weight:700}
+.ci{display:flex;gap:10px;align-items:center;padding:10px 12px;margin-bottom:8px;border-radius:16px;border:1px solid transparent;cursor:pointer}
+.ci.sel{border-color:var(--acc);background:rgba(var(--acc-rgb),.16)}
+.ci.np{cursor:default;opacity:.85}
+.ci .cc{flex:none;min-width:58px;font-weight:900;font-size:16px;color:var(--acc)}
+.ci .cd{flex:1;min-width:0;font-size:13px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ci .cs{flex:none;text-align:right;font-weight:900;font-size:17px;color:var(--ok)}
+.ci .cs.z{color:var(--bad)}
+.ci .cs small{display:block;font-size:10.5px;color:var(--mut);font-weight:700}
+.campo textarea{width:100%;min-height:96px;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.28);outline:0;font-size:16px;font-weight:600;resize:vertical;font-family:inherit;color:inherit}
+.campo textarea:focus{border-color:var(--acc);box-shadow:0 0 calc(16px*var(--glow)) rgba(var(--acc-rgb),.45)}
+.chk{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--mut);margin:0 0 14px;font-weight:600}
+.chk input{width:20px;height:20px;accent-color:var(--acc)}
+.cx.al{border-color:rgba(255,197,61,.7);background:rgba(255,197,61,.12);box-shadow:0 0 calc(16px*var(--glow)) rgba(255,197,61,.28)}
+.cx.al .lb{color:var(--warn)}.cx.al b{color:var(--warn);text-shadow:0 0 calc(10px*var(--glow)) rgba(255,197,61,.7)}
+.nav button{position:relative}
+.nav .dot{position:absolute;top:5px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--warn);color:#04060F;font-size:10.5px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 0 calc(10px*var(--glow)) rgba(255,197,61,.8)}
+.pl{margin:6px 0;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+.pl.w{color:#FFE08A}.pl.e{color:#FF8FA3}
+.card.hero{border-color:rgba(var(--acc-rgb),.7);box-shadow:0 0 calc(34px*var(--glow)) rgba(var(--acc-rgb),.35),0 10px 34px rgba(0,0,0,.35)}
+.l1{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.cbox small,.saldo small{display:block;font-size:10.5px;font-weight:800;letter-spacing:1.2px;color:var(--mut);margin-bottom:2px}
+.cod{font-size:32px;font-weight:900;line-height:1;color:var(--acc);text-shadow:0 0 calc(14px*var(--glow)) rgba(var(--acc-rgb),.75);word-break:break-all}
+.card.hero .cod{font-size:38px}
+.saldo{text-align:right;line-height:1}
+.saldo b{display:inline-block;font-size:44px;font-weight:900;color:var(--ok);text-shadow:0 0 calc(18px*var(--glow)) rgba(57,255,136,.65)}
+.saldo b.z{font-size:30px;color:var(--bad);text-shadow:0 0 calc(18px*var(--glow)) rgba(255,77,109,.65)}
+.saldo em{font-style:normal;font-size:13px;font-weight:800;color:var(--mut);margin-left:5px}
+.card.hero .saldo b{font-size:52px}
+.locg{margin-top:12px;padding:11px 14px;border-radius:14px;font-size:21px;font-weight:900;letter-spacing:.3px;display:flex;align-items:center;gap:9px;
+  background:rgba(var(--acc2-rgb),.24);border:1px solid rgba(var(--acc2-rgb),.6);box-shadow:0 0 calc(16px*var(--glow)) rgba(var(--acc2-rgb),.3)}
+.locg span{font-size:19px}
+.locg.nl{font-size:15px;color:var(--mut);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);box-shadow:none;font-weight:700}
+.desc{margin:10px 2px 0;font-size:12px;color:var(--mut);line-height:1.35;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vazio{text-align:center;color:var(--mut);padding:44px 24px;font-size:14px;line-height:1.55}
+.vazio .big{font-size:46px;filter:drop-shadow(0 0 calc(16px*var(--glow)) var(--acc))}
+.btn{border:0;border-radius:16px;padding:15px 18px;font-weight:800;font-size:15px;cursor:pointer;transition:.15s}
+.btn:active{transform:scale(.97)}
+.btn.pri{color:#04060F;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 0 calc(24px*var(--glow)) rgba(var(--acc-rgb),.55)}
+.btn.sec{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16)}
+.btn.bad{background:rgba(255,77,109,.16);border:1px solid rgba(255,77,109,.5);color:#FF8FA3}
+.btn.full{width:100%}
+.mais{display:block;margin:6px auto 14px}
+
+/* abas internas */
+.seg{display:flex;padding:5px;gap:5px;margin:6px 0 14px;border-radius:18px}
+.seg button{flex:1;min-width:0;border:0;background:none;border-radius:14px;padding:9px 2px;font-weight:800;color:var(--mut);font-size:11.5px;line-height:1.3}
+.seg button span{display:block;font-size:17px;margin-bottom:1px}
+.seg button.on{color:#04060F;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 0 calc(18px*var(--glow)) rgba(var(--acc-rgb),.5)}
+
+/* formulário */
+.box{padding:16px;margin-bottom:14px}
+.box h3{margin:0 0 12px;font-size:15px}
+.campo{margin-bottom:12px}
+.campo label{display:block;font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--mut);margin:0 0 6px 4px;text-transform:uppercase}
+.campo input,.campo select{width:100%;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.28);outline:0;font-size:16px;font-weight:600}
+.campo input:focus,.campo select:focus{border-color:var(--acc);box-shadow:0 0 calc(16px*var(--glow)) rgba(var(--acc-rgb),.45)}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acoes{display:flex;gap:10px;margin-top:6px}
+.acoes .btn{flex:1}
+.drop{border:2px dashed rgba(var(--acc-rgb),.55);border-radius:20px;padding:30px 16px;text-align:center;background:rgba(var(--acc-rgb),.06);cursor:pointer}
+.drop .big{font-size:40px;filter:drop-shadow(0 0 calc(14px*var(--glow)) var(--acc))}
+.drop b{display:block;margin:8px 0 4px;font-size:16px}
+.drop span{font-size:12px;color:var(--mut);line-height:1.5;display:block}
+.drop.sm{padding:18px 14px;display:block}.drop.sm .big{font-size:30px}
+.st{margin-top:12px;font-size:12.5px;color:var(--mut);line-height:1.5}.st b{color:var(--ok)}
+.ajuda{font-size:12.5px;color:var(--mut);line-height:1.6}
+.ajuda code{background:rgba(255,255,255,.1);padding:2px 6px;border-radius:6px;color:var(--acc);font-size:12px}
+.chk{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;margin:14px 0 2px}
+.chk input{width:22px;height:22px;accent-color:var(--acc)}
+.res{overflow-wrap:anywhere;margin-top:14px;padding:14px;border-radius:16px;background:rgba(57,255,136,.1);border:1px solid rgba(57,255,136,.4);font-size:14px;line-height:1.6}
+.res.err{background:rgba(255,77,109,.1);border-color:rgba(255,77,109,.45)}
+.bar{height:8px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 12px var(--acc);transition:width .2s}
+.mini{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.08)}
+.mini:last-child{border:0}
+.mini div{min-width:0}
+.mini b{font-size:13px;color:var(--acc)}
+.mini p{margin:2px 0 0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini button{flex:none;background:rgba(255,255,255,.1);border:0;border-radius:12px;padding:9px 13px;font-weight:700;font-size:13px}
+
+/* ajustes */
+.cores{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cor{border:2px solid transparent;border-radius:16px;padding:14px 6px;text-align:center;font-weight:800;font-size:12px;background:rgba(255,255,255,.07)}
+.cor i{display:block;height:26px;border-radius:9px;margin-bottom:8px}
+.cor.on{border-color:#fff;box-shadow:0 0 18px rgba(255,255,255,.35)}
+.linha{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;font-size:14px;font-weight:700}
+.linha span{color:var(--acc);font-weight:800}
+input[type=range]{width:100%;accent-color:var(--acc);height:28px}
+input[type=color]{width:100%;height:48px;border:0;border-radius:14px;background:none;padding:0}
+.sw{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;margin-top:14px}
+.sw input{width:50px;height:28px;accent-color:var(--acc)}
+
+/* navegação inferior */
+.nav{position:fixed;z-index:20;left:14px;right:14px;bottom:calc(var(--safe-b) + 12px);display:flex;padding:7px;border-radius:26px}
+.nav button{flex:1;border:0;background:none;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 8px;border-radius:19px;font-size:11.5px;font-weight:800;transition:.2s}
+.nav svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav button.on{color:var(--acc);background:rgba(var(--acc-rgb),.14);text-shadow:0 0 calc(10px*var(--glow)) rgba(var(--acc-rgb),.8)}
+.nav button.on svg{filter:drop-shadow(0 0 calc(7px*var(--glow)) var(--acc))}
+
+/* detalhe */
+.shade{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:flex-end;animation:fade .2s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{width:100%;max-height:88dvh;overflow-y:auto;border-radius:28px 28px 0 0;padding:10px 20px calc(24px + var(--safe-b));background:rgba(10,16,40,.9);animation:sobe .28s ease;
+  border:1px solid rgba(var(--acc-rgb),.4);border-bottom:0;box-shadow:0 -10px 50px rgba(var(--acc-rgb),.25)}
+@keyframes sobe{from{transform:translateY(60%)}to{transform:none}}
+.sheet .grip{width:46px;height:5px;border-radius:5px;background:rgba(255,255,255,.3);margin:0 auto 16px}
+.sheet h2{margin:4px 0 14px;font-size:20px;line-height:1.3}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.kv div{padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+.kv div.w{grid-column:1/3}
+.kv small{display:block;font-size:10.5px;letter-spacing:.8px;color:var(--mut);font-weight:800;text-transform:uppercase;margin-bottom:4px}
+.kv b{font-size:17px;word-break:break-word}
+.toast{position:fixed;z-index:60;left:50%;bottom:calc(var(--safe-b) + 98px);transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;
+  padding:12px 20px;border-radius:999px;font-weight:700;font-size:14px;background:rgba(10,16,40,.95);border:1px solid var(--acc);box-shadow:0 0 calc(24px*var(--glow)) rgba(var(--acc-rgb),.5);transition:.3s;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+/* locais: linha editável */
+.cx b.t{font-size:15px}
+.nav button{font-size:11px}
+.ci .sl{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);background:none;color:#04060F;font-weight:900;font-size:15px;display:grid;place-items:center;padding:0}
+.ci.sel .sl{background:var(--acc);border-color:var(--acc);box-shadow:0 0 calc(10px*var(--glow)) rgba(var(--acc-rgb),.7)}
+.stp{display:flex;align-items:center;gap:4px}
+.stp button{flex:none;width:32px;height:42px;border:0;border-radius:12px;background:rgba(255,255,255,.12);font-size:20px;font-weight:900;padding:0}
+.stp input{width:100%;min-width:0;height:42px;text-align:center;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.28);outline:0;font-size:18px;font-weight:800}
+.stp input:focus{border-color:var(--acc);box-shadow:0 0 calc(14px*var(--glow)) rgba(var(--acc-rgb),.45)}
+.stp.big button{width:56px;height:56px;font-size:26px}.stp.big input{height:56px;font-size:24px}
+.btn.sm{padding:10px 12px;font-size:13px;border-radius:12px}
+/* conferência */
+.cx.s-ok{border-color:rgba(57,255,136,.65);background:rgba(57,255,136,.1)}
+.cx.s-bad{border-color:rgba(255,77,109,.7);background:rgba(255,77,109,.12)}
+.cx.s-mid{border-color:rgba(255,197,61,.6);background:rgba(255,197,61,.08)}
+.cx small.dv{display:block;color:var(--bad)}
+.cf{padding:13px 14px;margin-bottom:10px}
+.cf.nv{box-shadow:inset 3px 0 0 var(--mut),0 10px 34px rgba(0,0,0,.35)}
+.cf.ok{box-shadow:inset 3px 0 0 var(--ok),0 10px 34px rgba(0,0,0,.35)}
+.cf.bx{box-shadow:inset 3px 0 0 var(--bad),0 10px 34px rgba(0,0,0,.35)}
+.cf.ps{box-shadow:inset 3px 0 0 var(--acc),0 10px 34px rgba(0,0,0,.35)}
+.cf .top2{display:flex;gap:10px;align-items:baseline}
+.cf .cc{flex:none;font-weight:900;font-size:17px;color:var(--acc)}
+.cf .cd{flex:1;min-width:0;font-size:13px;line-height:1.35;color:var(--txt)}
+.cf .tg{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:800;letter-spacing:.6px;color:var(--warn);background:rgba(255,197,61,.12);border:1px solid rgba(255,197,61,.4);border-radius:8px;padding:3px 8px}
+.cfg{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:8px;margin-top:10px;align-items:end}
+.cfg small{display:block;font-size:10px;letter-spacing:1px;font-weight:800;color:var(--mut);margin-bottom:4px}
+.cfg .v{font-size:24px;font-weight:900;line-height:42px;height:42px}
+.cfg .v em{font-style:normal;font-size:11px;color:var(--mut);margin-left:3px;font-weight:800}
+.cfg .df{text-align:right}
+.cf.ok .df .v{color:var(--ok)}.cf.bx .df .v{color:var(--bad)}.cf.ps .df .v{color:var(--acc)}.cf.nv .df .v{color:var(--mut)}
+.cfa{margin-top:10px;padding:9px 12px;border-radius:12px;font-size:13.5px;font-weight:700;line-height:1.35}
+.cfa.nv{background:rgba(255,255,255,.06);color:var(--mut)}
+.cfa.ok{background:rgba(57,255,136,.12);color:var(--ok)}
+.cfa.bx{background:rgba(255,77,109,.15);color:#FF8FA3}
+.cfa.ps{background:rgba(var(--acc-rgb),.14);color:var(--acc)}
+.cfn{margin-top:8px;font-size:12px;color:#FFE08A}
+.cfb{display:flex;gap:8px;margin-top:10px}
+.cfb .btn{flex:1}
+.aj{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.aj:last-child{border:0}
+.aj>div:first-child{min-width:0}
+.aj b.k{color:var(--acc);font-size:14px}
+.aj p{margin:2px 0;font-size:12.5px;line-height:1.35}
+.aj small{font-size:11.5px;color:var(--mut)}
+.aj .ac{flex:none;text-align:right;font-size:11px;font-weight:900;letter-spacing:.6px}
+.aj .ac b{display:block;font-size:22px;letter-spacing:0}
+.aj.bx .ac{color:var(--bad)}.aj.ps .ac{color:var(--acc)}
+@media (min-width:700px){#app{max-width:520px;margin:0 auto}.nav{left:50%;right:auto;width:492px;transform:translateX(-50%)}}
+</style>
+</head>
+<body>
+<div class="bg"><i></i><i></i><i></i></div>
+
+<div id="app">
+  <header class="top">
+    <div class="logo"><b><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></b><span class="neon">ESTOQUE</span></div>
+    <div class="cnt glass"><strong id="cTotal">0</strong> itens</div>
+  </header>
+
+  <main id="main">
+    <!-- CONSULTA -->
+    <section class="view on" id="v-consulta">
+      <div class="busca">
+        <div class="alertaP hidden" id="alertaPend"></div>
+        <div class="alertaP hidden" id="alertaCes"></div>
+        <div class="sb glass">
+          <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+          <input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Código ou nome do material">
+          <button id="qx" class="hidden" aria-label="Limpar">✕</button>
+        </div>
+        <div class="chips" id="chips">
+          <button class="chip on" data-f="todos">Todos</button>
+          <button class="chip" data-f="com">Com saldo</button>
+          <button class="chip" data-f="sem">Sem saldo</button>
+          <button class="chip pd hidden" data-f="pend" id="chipPend">⏳ Pendentes</button>
+        </div>
+      </div>
+      <div class="info" id="info"></div>
+      <div id="lista"></div>
+    </section>
+
+    <!-- CESTAS -->
+    <section class="view" id="v-cestas">
+      <div id="cLista">
+        <div class="alertaP hidden" id="alertaCes2" style="margin-top:6px"></div>
+        <div class="busca">
+          <div class="sb glass">
+            <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+            <input id="cq" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" placeholder="Pesquisar local (ex.: cesta 34, palete)">
+            <button id="cqx" class="hidden" aria-label="Limpar">✕</button>
+          </div>
+        </div>
+        <div class="info" id="cInfo"></div>
+        <div class="cgrid" id="cGrid"></div>
+      </div>
+      <div id="cDet" class="hidden">
+        <button class="btn sec" id="cVolta">‹ Todos os locais</button>
+        <div class="box glass" style="margin-top:12px"><div class="cod neon" id="cTit" style="font-size:28px"></div><div class="ajuda" id="cSub"></div></div>
+        <div id="cItens"></div>
+        <div class="box glass">
+          <h3 class="neon">Adicionar material neste local</h3>
+          <p class="ajuda" style="margin:0 0 12px">Se o código já está cadastrado, ele vem para este local (e você pode acertar a quantidade). Se for um código novo, informe a descrição.</p>
+          <div class="campo"><label>Código</label><input id="aCod" inputmode="numeric" autocomplete="off" placeholder="Ex.: 22097"></div>
+          <div class="duo">
+            <div class="campo"><label>Quantidade</label><input id="aQtd" inputmode="decimal" autocomplete="off" placeholder="Opcional"></div>
+            <div class="campo"><label>Unidade</label><input id="aUn" list="unids" autocomplete="off" placeholder="PÇ"></div>
+          </div>
+          <div class="campo"><label>Descrição (só se o código for novo)</label><input id="aDesc" autocomplete="off" placeholder="Ex.: TUBO PVC 50MM"></div>
+          <button class="btn pri full" id="aOk">➕ Adicionar neste local</button>
+          <div id="aRes"></div>
+        </div>
+        <div class="box glass">
+          <h3 class="neon">Mover itens</h3>
+          <div class="campo"><label>Códigos (um ou vários)</label><textarea id="mCods" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Ex.: 22097 4821 7488&#10;(separe por espaço, vírgula ou linha). Ou toque nos itens acima."></textarea></div>
+          <div class="campo"><label>Mover para qual local</label><input id="mDest" autocomplete="off" placeholder="Ex.: 10 (vira CESTA 10) ou PALETE"></div>
+          <label class="chk"><input type="checkbox" id="mOutras"> Mover também os códigos que estão em outro local</label>
+          <div class="acoes"><button class="btn pri" id="mConf">Conferir</button><button class="btn sec" id="mAll">Mover a cesta inteira</button></div>
+          <div id="mRes"></div>
+        </div>
+        <div class="box glass">
+          <h3 class="neon">Renomear este local</h3>
+          <p class="ajuda" style="margin:0 0 12px">Troca só o número (ou o nome): todos os itens deste local passam para o novo número. Se esse número já existir, a cesta nova fica com ele e a outra fica <b style="color:var(--warn)">pendente de renumeração</b> até você dar outro número a ela.</p>
+          <div class="campo"><label>Novo número ou nome</label><input id="rNovo" autocomplete="off" placeholder="Ex.: 99 ou PALETE 2"></div>
+          <button class="btn pri full" id="rConf">Renomear</button>
+          <div id="rRes"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CADASTRO -->
+    <section class="view" id="v-cadastro">
+      <div class="seg glass">
+        <button class="on" data-s="manual"><span>✍️</span>Manual</button>
+        <button data-s="importar"><span>📥</span>Importar</button>
+        <button data-s="exportar"><span>💻</span>Computador</button>
+        <button data-s="celular"><span>📱</span>Outro celular</button>
+      </div>
+
+      <div id="s-manual">
+        <div class="box glass">
+          <h3 id="formTitulo" class="neon">Novo material</h3>
+          <div class="campo"><label>Código</label><input id="fCod" inputmode="numeric" autocomplete="off" placeholder="Ex.: 22097 (vazio = pendente)"></div>
+          <p class="ajuda" style="margin:-4px 4px 12px;font-size:12px">Sem o código? Deixe em branco e salve: o material fica <b style="color:var(--warn)">pendente</b> neste celular e não vai nas exportações até receber um código.</p>
+          <div class="campo"><label>Descrição do item</label><input id="fDesc" autocomplete="off" placeholder="Ex.: ABRAÇADEIRA DE NYLON 280X4,8MM"></div>
+          <div class="duo">
+            <div class="campo"><label>Unidade</label><input id="fUn" list="unids" autocomplete="off" placeholder="PÇ"></div>
+            <div class="campo"><label>Saldo</label><input id="fSaldo" type="number" inputmode="decimal" step="any" placeholder="0"></div>
+          </div>
+          <datalist id="unids"><option>PÇ</option><option>UN</option><option>SC</option><option>CX</option><option>CT</option><option>PCT</option><option>M</option><option>M2</option><option>M3</option><option>KG</option><option>L</option><option>RL</option></datalist>
+          <div class="campo"><label>Localização</label><input id="fLoc" autocomplete="off" placeholder="Ex.: CESTA 59, PALETE"></div>
+          <div class="duo">
+            <div class="campo"><label>Nº ficha</label><input id="fFicha" autocomplete="off" placeholder="Opcional"></div>
+            <div class="campo"><label>Categoria</label><input id="fCat" autocomplete="off" placeholder="ELETRICA;HIDRAULICA"></div>
+          </div>
+          <div class="acoes">
+            <button class="btn sec hidden" id="fCancel">Cancelar</button>
+            <button class="btn pri" id="fSalvar">Salvar material</button>
+          </div>
+        </div>
+        <div class="box glass">
+          <h3>Últimos cadastrados</h3>
+          <div id="recentes"></div>
+        </div>
+      </div>
+
+      <div id="s-importar" class="hidden">
+        <div class="box glass">
+          <h3 class="neon">1 · Cadastro das cestas</h3>
+          <p class="ajuda" style="margin:0 0 12px">Arquivo com nome, localização (cesta) e ficha de cada material.</p>
+          <label class="drop sm" for="arqCad"><div class="big">📂</div><b>Escolher cadastro</b><span>Excel (.xlsx) ou CSV</span></label>
+          <input id="arqCad" type="file" accept=".xlsx,.csv,.txt" class="hidden">
+          <label class="chk"><input type="checkbox" id="substituir"> Apagar o cadastro atual antes</label>
+          <div class="st" id="stCad"></div>
+        </div>
+        <div class="box glass">
+          <h3 class="neon">2 · Saldo do MEGA</h3>
+          <p class="ajuda" style="margin:0 0 12px">Relatório do MEGA com código e quantidade. O saldo de cada material fica igual ao do MEGA e, se o código bater, o nome passa a ser a descrição completa do MEGA.</p>
+          <label class="drop sm" for="arqMega"><div class="big">📊</div><b>Escolher arquivo do MEGA</b><span>Excel (.xlsx) ou CSV</span></label>
+          <input id="arqMega" type="file" accept=".xlsx,.csv,.txt" class="hidden">
+          <label class="chk"><input type="checkbox" id="zerar" checked> Quem não está no MEGA fica com saldo 0</label>
+          <label class="chk"><input type="checkbox" id="faltantes"> Cadastrar também os códigos que só existem no MEGA</label>
+          <div class="st" id="stMega"></div>
+        </div>
+        <div class="bar hidden" id="bar"><i></i></div>
+        <div id="resultado"></div>
+        <div class="box glass ajuda" style="margin-top:14px">
+          Você pode enviar os dois arquivos em qualquer ordem. O app reconhece sozinho qual é o cadastro e qual é o do MEGA, mesmo que você escolha no lugar errado. Se o código já existir, o material é atualizado.
+        </div>
+      </div>
+    
+      <div id="s-exportar" class="hidden">
+        <div class="box glass">
+          <h3 class="neon">Exportar para computador</h3>
+          <p class="ajuda" style="margin:0 0 14px">Gera a planilha completa do estoque, com todas as abas, atualizando <b>só a aba CADASTRO</b> com o que está no app (saldo, local, descrição, ficha, categoria e materiais novos).</p>
+          <button class="btn pri full" id="bExcel">📤 Exportar Excel</button>
+          <div class="bar hidden" id="barExp"><i></i></div>
+          <div id="resExp"></div>
+        </div>
+        <div class="box glass ajuda">
+          Esta planilha abre no computador do jeito que ela é: as outras abas continuam iguais. A coluna SALDO dos materiais que você mudou no app vai como número fixo; os demais mantêm a fórmula original.
+        </div>
+      </div>
+
+      <div id="s-celular" class="hidden">
+        <div class="box glass">
+          <h3 class="neon">Exportar para outro celular</h3>
+          <p class="ajuda" style="margin:0 0 14px">Gera um arquivo só com o <b>cadastro</b> (código, descrição, unidade, <b>saldo</b>, localização, nº ficha e categoria), do jeito que está neste aparelho. Envie o arquivo para o outro celular (WhatsApp, por exemplo) e importe lá.</p>
+          <div class="st" id="infoCel" style="margin:0 0 14px"></div>
+          <button class="btn pri full" id="bCel">📱 Gerar arquivo para outro celular</button>
+          <button class="btn sec full hidden" id="bCelShare" style="margin-top:10px">💬 Enviar (WhatsApp e outros)</button>
+          <div class="bar hidden" id="barCel"><i></i></div>
+          <div id="resCel"></div>
+        </div>
+        <div class="box glass ajuda">
+          <b style="color:var(--txt)">No outro celular:</b><br>
+          1. Abra o app → <b>Cadastro</b> → <b>Importar</b>.<br>
+          2. Em <b>1 · Cadastro das cestas</b>, escolha o arquivo recebido.<br>
+          3. Para ficar <b>idêntico</b> ao deste aparelho, marque <b>"Apagar o cadastro atual antes"</b>. Sem marcar, os materiais são atualizados e os que só existem lá continuam.<br><br>
+          O saldo vem do arquivo, igual a este aparelho (o saldo do MEGA guardado no outro celular não sobrescreve).
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFERÊNCIA DE ESTOQUE -->
+    <section class="view" id="v-conf">
+      <div class="seg glass" id="kSeg">
+        <button class="on" data-q="locais"><span>📋</span>Conferir</button>
+        <button data-q="ajustes"><span>⚖️</span>Ajustar no MEGA</button>
+        <button data-q="io"><span>📁</span>Importar / Exportar</button>
+      </div>
+
+      <div id="q-locais">
+        <div id="kLista">
+          <div class="busca">
+            <div class="sb glass">
+              <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+              <input id="kq" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" placeholder="Local para conferir (ex.: cesta 1)">
+              <button id="kqx" class="hidden" aria-label="Limpar">✕</button>
+            </div>
+          </div>
+          <div class="info" id="kInfo"></div>
+          <div class="cgrid" id="kGrid"></div>
+        </div>
+        <div id="kDet" class="hidden">
+          <button class="btn sec" id="kVolta">‹ Todos os locais</button>
+          <div class="box glass" style="margin-top:12px"><div class="cod neon" id="kTit" style="font-size:28px"></div><div class="ajuda" id="kSub"></div>
+            <div class="chips" id="kChips" style="margin-top:12px">
+              <button class="chip on" data-kf="todos">Todos</button>
+              <button class="chip" data-kf="falta">Falta conferir</button>
+              <button class="chip" data-kf="div">Divergências</button>
+            </div>
+          </div>
+          <div id="kItens"></div>
+          <button class="btn sec full" id="kTodos" style="margin-bottom:14px">✓ Marcar o que falta como igual ao MEGA</button>
+          <div class="box glass">
+            <h3 class="neon">Encontrei algo que não está na lista</h3>
+            <p class="ajuda" style="margin:0 0 12px">Material que está fisicamente neste local, mas o MEGA não mostra aqui (ou nem tem saldo). Ele entra na conferência e, se o MEGA tiver menos, aparece como saldo positivo.</p>
+            <div class="campo"><label>Código</label><input id="xCod" inputmode="numeric" autocomplete="off" placeholder="Ex.: 22097"></div>
+            <div class="duo">
+              <div class="campo"><label>Quantidade contada</label><input id="xQtd" inputmode="decimal" autocomplete="off" placeholder="Ex.: 3"></div>
+              <div class="campo"><label>Unidade</label><input id="xUn" list="unids" autocomplete="off" placeholder="PÇ"></div>
+            </div>
+            <div class="campo"><label>Descrição (só se não for cadastrado)</label><input id="xDesc" autocomplete="off" placeholder="Ex.: TUBO PVC 50MM"></div>
+            <button class="btn pri full" id="xOk">➕ Adicionar à conferência</button>
+            <div id="xRes"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="q-ajustes" class="hidden"></div>
+
+      <div id="q-io" class="hidden">
+        <div class="box glass">
+          <h3 class="neon">Exportar conferência para o MEGA</h3>
+          <p class="ajuda" style="margin:0 0 12px">Documento Word “Ajustes no MEGA”: uma tabela por local, só com o que tem diferença (Código, Descrição, Ação, Qtd., MEGA, Contado).</p>
+          <div class="st" id="kInfoExp" style="margin:0 0 12px"></div>
+          <button class="btn pri full" id="kExpW">📄 Exportar Word (Ajustes no MEGA)</button>
+          <div id="kExpWRes"></div>
+        </div>
+        <div class="box glass">
+          <h3 class="neon">Guardar a conferência (Excel)</h3>
+          <p class="ajuda" style="margin:0 0 12px">Planilha completa com todas as contagens. Serve para guardar, continuar em outro celular ou importar de volta aqui.</p>
+          <label class="chk"><input type="checkbox" id="kSoConf"> Só o que já foi conferido</label>
+          <button class="btn sec full" id="kExp" style="margin-top:12px">📤 Exportar conferência (Excel)</button>
+          <div id="kExpRes"></div>
+        </div>
+        <div class="box glass">
+          <h3 class="neon">Importar lista de conferência</h3>
+          <p class="ajuda" style="margin:0 0 12px">Use um arquivo gerado aqui (precisa das colunas CÓD e CONTADO). Serve para continuar a conferência em outro celular ou voltar uma contagem guardada.</p>
+          <label class="drop sm" for="kArq"><div class="big">📂</div><b>Escolher lista de conferência</b><span>Excel (.xlsx) ou CSV</span></label>
+          <input id="kArq" type="file" accept=".xlsx,.csv,.txt" class="hidden">
+          <label class="chk"><input type="checkbox" id="kSubst"> Apagar a conferência atual antes</label>
+          <div id="kImpRes"></div>
+        </div>
+        <div class="box glass">
+          <h3>Limpar conferência</h3>
+          <p class="ajuda" style="margin:0 0 12px">Apaga só as contagens. Não mexe nos materiais nem nos saldos.</p>
+          <button class="btn bad full" id="kLimpa">🗑 Apagar toda a conferência</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section class="view" id="v-ajustes">
+      <div class="box glass">
+        <h3>Cor neon</h3>
+        <div class="cores" id="cores"></div>
+        <div class="linha">Cor personalizada</div>
+        <input type="color" id="corCustom" value="#00e5ff">
+      </div>
+      <div class="box glass">
+        <h3>Vidro e brilho</h3>
+        <div class="linha">Transparência <span id="tV"></span></div>
+        <input type="range" id="rGlass" min="2" max="45" value="14">
+        <div class="linha">Desfoque <span id="dV"></span></div>
+        <input type="range" id="rBlur" min="0" max="34" value="18">
+        <div class="linha">Brilho neon <span id="bV"></span></div>
+        <input type="range" id="rGlow" min="0" max="150" value="100">
+        <div class="sw">Fundo animado <input type="checkbox" id="swAnim" checked></div>
+      </div>
+      <div class="box glass">
+        <h3>Dados</h3>
+        <div class="acoes" style="flex-direction:column">
+          <button class="btn sec" id="bExp">💻 Exportar para computador (Excel)</button>
+          <button class="btn sec" id="bExpCel">📱 Exportar para outro celular</button>
+          <button class="btn sec" id="bReset">↺ Restaurar visual padrão</button>
+          <button class="btn bad" id="bLimpa">🗑 Apagar todos os materiais</button>
+        </div>
+        <p class="ajuda" style="margin:14px 2px 0">Tudo fica salvo só neste aparelho e funciona sem internet.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav glass">
+    <button class="on" data-t="consulta"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Consulta</button>
+    <button data-t="cestas"><svg viewBox="0 0 24 24"><path d="M3.5 9h17l-1.6 10a2 2 0 0 1-2 1.7H7.1a2 2 0 0 1-2-1.7z"/><path d="M8 9l3-5M16 9l-3-5"/></svg>Locais</button>
+    <button data-t="conf"><svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>Conferir</button>
+    <button data-t="cadastro"><svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></svg>Cadastro</button>
+    <button data-t="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9"/></svg>Cores</button>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+<div id="modal"></div>
+
+<script>
+/* ===================== utilidades ===================== */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+let toastT;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600)}
+function buzz(){try{navigator.vibrate&&navigator.vibrate(20)}catch(e){}}
+const fmtN=n=>Number(n).toLocaleString('pt-BR',{maximumFractionDigits:3});
+/* texto digitado -> número (aceita 1,5 e 1.234,5); vazio ou inválido = NaN */
+const pq=v=>{v=String(v??'').trim().replace(/\s/g,'');if(v==='')return NaN;const n=Number(v.includes(',')?v.replace(/\./g,'').replace(',','.'):v);return isNaN(n)?NaN:n};
+
+/* ===================== banco (IndexedDB) ===================== */
+let db=null, items=[], memOnly=false;
+function abrirDB(){return new Promise(res=>{
+  try{const r=indexedDB.open('estoque-pwa',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('items',{keyPath:'cod'});
+    r.onsuccess=()=>{db=r.result;res(true)};
+    r.onerror=()=>{memOnly=true;res(false)};
+  }catch(e){memOnly=true;res(false)}})}
+const tx=(m)=>db.transaction('items',m).objectStore('items');
+const reqP=r=>new Promise((ok,no)=>{r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+async function dbAll(){if(!db)return[];return reqP(tx('readonly').getAll())}
+async function dbPutMany(arr){if(!db)return;return new Promise((ok,no)=>{const t=db.transaction('items','readwrite');const s=t.objectStore('items');arr.forEach(x=>s.put(x));t.oncomplete=ok;t.onerror=()=>no(t.error)})}
+async function dbDel(cod){if(!db)return;return reqP(tx('readwrite').delete(cod))}
+async function dbClear(){if(!db)return;return reqP(tx('readwrite').clear())}
+function prep(it){it.h=norm((it.pend?'pendente sem codigo':it.cod)+' '+it.desc+' '+it.loc+' '+it.cat+' '+it.ficha);return it}
+const novaChavePend=()=>'P-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function limpo(it){const {h,...r}=it;return r}
+const byCod=new Map();
+function reindex(){byCod.clear();items.forEach(i=>byCod.set(i.cod,i));$('#cTotal').textContent=items.length.toLocaleString('pt-BR');atualizaPend();if(typeof alertaCestas==='function'&&items.length>=0)alertaCestas()}
+function atualizaPend(){
+  const n=items.filter(i=>i.pend).length, a=$('#alertaPend'), ch=$('#chipPend');
+  if(!n&&filtro==='pend'){filtro='todos';$$('.chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='todos'))}
+  a.classList.toggle('hidden',!n); ch.classList.toggle('hidden',!n);
+  if(n){a.innerHTML=`<span>⏳</span><span><b>${n.toLocaleString('pt-BR')}</b> ${n===1?'material':'materiais'} pendente${n===1?'':'s'} de código</span><em>Ver</em>`;ch.textContent='⏳ Pendentes ('+n+')'}
+}
+
+/* ===================== leitor de planilha (xlsx / csv) ===================== */
+/*PARSER-INICIO*/
+const u16=(d,o)=>d.getUint16(o,true), u32=(d,o)=>d.getUint32(o,true);
+async function inflar(bytes){
+  const ds=new DecompressionStream('deflate-raw');
+  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer());
+}
+function zipIndex(buf){
+  const d=new DataView(buf); let e=-1;
+  for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65600);i--){if(u32(d,i)===0x06054b50){e=i;break}}
+  if(e<0)throw new Error('Arquivo não é um .xlsx válido.');
+  const n=u16(d,e+10); let p=u32(d,e+16); const m=new Map(); const td=new TextDecoder();
+  for(let i=0;i<n;i++){
+    if(u32(d,p)!==0x02014b50)break;
+    const meth=u16(d,p+10),cs=u32(d,p+20),us=u32(d,p+24),nl=u16(d,p+28),el=u16(d,p+30),cl=u16(d,p+32),off=u32(d,p+42);
+    const name=td.decode(new Uint8Array(buf,p+46,nl));
+    m.set(name,{meth,cs,us,off}); p+=46+nl+el+cl;
+  }
+  return m;
+}
+async function zipGet(buf,idx,name,max){
+  const f=idx.get(name); if(!f)return null;
+  if(max&&f.us>max)throw new Error('GRANDE:'+name);
+  const d=new DataView(buf); const o=f.off;
+  const start=o+30+u16(d,o+26)+u16(d,o+28);
+  const raw=new Uint8Array(buf,start,f.cs);
+  const out=f.meth===0?raw:await inflar(raw);
+  return new TextDecoder('utf-8').decode(out);
+}
+const unesc=s=>s.replace(/&#x([0-9a-f]+);/gi,(_,h)=>String.fromCodePoint(parseInt(h,16))).replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(+n))
+  .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+function colIdx(ref){let n=0;const m=/^[A-Z]+/.exec(ref);if(!m)return 0;for(const c of m[0])n=n*26+c.charCodeAt(0)-64;return n-1}
+function lerShared(xml){
+  const out=[]; if(!xml)return out;
+  for(const m of xml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)){
+    const bloco=m[1].replace(/<rPh\b[\s\S]*?<\/rPh>/g,'');
+    let s=''; for(const t of bloco.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g))s+=t[1];
+    out.push(unesc(s));
+  }
+  return out;
+}
+function lerSheet(xml,shared,maxRows=60000){
+  const rows=[];
+  for(const rm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+    const arr=[]; let any=false;
+    for(const cm of rm[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+      const at=cm[1],body=cm[2]; if(!body)continue;
+      const r=/\br="([A-Z]+\d+)"/.exec(at), t=/\bt="(\w+)"/.exec(at);
+      const ci=r?colIdx(r[1]):arr.length; if(ci>60)continue;
+      let v='';
+      if(t&&t[1]==='inlineStr'){let s='';for(const x of body.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g))s+=x[1];v=unesc(s)}
+      else{const vm=/<v>([\s\S]*?)<\/v>/.exec(body); if(vm){
+        if(t&&t[1]==='s')v=shared[+vm[1]]??''; else if(t&&t[1]==='e')v=''; else if(t&&t[1]==='str')v=unesc(vm[1]); else v=vm[1];}}
+      if(v!==''){arr[ci]=v;any=true}
+    }
+    if(any){rows.push(arr);if(rows.length>=maxRows)break}
+  }
+  return rows;
+}
+async function lerXlsx(buf,onProg,escolher){
+  const idx=zipIndex(buf);
+  const wbx=await zipGet(buf,idx,'xl/workbook.xml'); if(!wbx)throw new Error('Planilha sem abas.');
+  const rel=await zipGet(buf,idx,'xl/_rels/workbook.xml.rels')||'';
+  const alvo={}; for(const m of rel.matchAll(/<Relationship\b[^>]*>/g)){
+    const id=/\bId="([^"]+)"/.exec(m[0]),tg=/\bTarget="([^"]+)"/.exec(m[0]); if(id&&tg){let t=tg[1].replace(/^\//,'');if(!t.startsWith('xl/'))t='xl/'+t;alvo[id[1]]=t}}
+  let abas=[...wbx.matchAll(/<sheet\b[^>]*>/g)].map(m=>{
+    const nm=/\bname="([^"]*)"/.exec(m[0]),id=/\br:id="([^"]+)"/.exec(m[0]);
+    return {nome:unesc(nm?nm[1]:''),arq:id?alvo[id[1]]:null}}).filter(a=>a.arq&&idx.has(a.arq));
+  abas.sort((a,b)=>(/cadastro/i.test(b.nome)?1:0)-(/cadastro/i.test(a.nome)?1:0));
+  const shared=lerShared(await zipGet(buf,idx,'xl/sharedStrings.xml',150e6));
+  let grande=false, tent=0;
+  for(const ab of abas){
+    if(tent++>=8)break;
+    onProg&&onProg(tent/Math.min(8,abas.length)*0.6);
+    let xml; try{xml=await zipGet(buf,idx,ab.arq,120e6)}catch(e){grande=true;continue}
+    if(!xml)continue;
+    const rows=lerSheet(xml,shared); xml=null;
+    const r=escolher(rows); if(r)return {...r,aba:ab.nome};
+  }
+  throw new Error(grande?'GRANDE':'Não encontrei colunas de CÓD e DESCRIÇÃO em nenhuma aba.');
+}
+function parseCSV(txt){
+  txt=txt.replace(/^\uFEFF/,''); const sep=(txt.split('\n')[0].match(/;/g)||[]).length>=(txt.split('\n')[0].match(/,/g)||[]).length?';':',';
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<txt.length;i++){const c=txt[i];
+    if(q){if(c==='"'){if(txt[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+    else if(c==='"')q=true; else if(c===sep){row.push(cur);cur=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&txt[i+1]==='\n')i++;row.push(cur);cur='';if(row.some(x=>x!==''))rows.push(row);row=[]}
+    else cur+=c;}
+  row.push(cur); if(row.some(x=>x!==''))rows.push(row); return rows;
+}
+const SIN={
+  cod:['cod','codigo','cod item','codigo item','codigo do item','cod material','codigo material'],
+  desc:['descricao','descricao do item','descricao do material','material','produto','nome do material','descricao item'],
+  un:['un','und','unid','unidade','unid.'],
+  saldo:['saldo','quantidade','qtd','qtde','estoque','saldo atual'],
+  loc:['localizacao','local','loc','loc estoque','local do estoque','local estoque'],
+  ficha:['n','no','n ficha','no ficha','numero ficha','num ficha','ficha','n da ficha'],
+  cat:['categoria','nome','tipo','setor','grupo','encarregado']
+};
+function num(sr){
+  sr=String(sr??'').trim(); if(!sr||/sem/i.test(sr))return 0;
+  if(/^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(sr))return Number(sr);
+  const v=parseFloat(sr.replace(/\./g,sr.includes(',')?'':'.').replace(',','.')); return isNaN(v)?0:v;
+}
+function tipoDoArquivo(rows){
+  const t=rows.slice(0,6).map(r=>(r||[]).map(norm).join(' ')).join(' ');
+  return /almox|custo unitario|valor total/.test(t)?'mega':'cadastro';
+}
+function mapearMega(rows){
+  for(let i=0;i<Math.min(rows.length,20);i++){
+    const m={};(rows[i]||[]).forEach((c,ci)=>{if(c==null)return;const n=norm(c);
+      for(const k of ['cod','desc','un','saldo']){if(m[k]===undefined&&SIN[k].includes(n)){m[k]=ci;break}}});
+    if(m.cod===undefined||m.saldo===undefined)continue;
+    const itens=[];
+    for(let j=i+1;j<rows.length;j++){const r=rows[j]||[];let cod=String(r[m.cod]??'').trim();
+      if(/^\d+\.0+$/.test(cod))cod=cod.replace(/\.0+$/,''); if(!/^\d+$/.test(cod))continue;
+      itens.push({cod,saldo:Math.max(0,num(r[m.saldo])),desc:m.desc===undefined?'':String(r[m.desc]??'').trim(),un:m.un===undefined?'':String(r[m.un]??'').trim()});}
+    const a=String((rows[0]||[])[0]||''); return {itens,almox:/almox/i.test(a)?a.replace(/^almox\.?:?\s*/i,'').trim():''};
+  }
+  return null;
+}
+/* arquivo gerado por "Outro celular": cabeçalho com LOCALIZAÇÃO + CATEGORIA + SALDO */
+function ehSync(rows){const h=(rows[0]||[]).map(norm);return h.includes('localizacao')&&h.includes('categoria')&&h.includes('saldo')&&h.includes('cod')}
+const escolher=rows=>{const t=tipoDoArquivo(rows);const r=t==='mega'?mapearMega(rows):mapear(rows);return r&&r.itens.length?{...r,tipo:t,sync:t==='cadastro'&&ehSync(rows)}:null};
+function mapear(rows){
+  let best=null;
+  for(let i=0;i<Math.min(rows.length,20);i++){
+    const m={};let hits=0;
+    (rows[i]||[]).forEach((c,ci)=>{ if(c==null)return; const n=norm(c); if(!n||n.includes('sequencia'))return;
+      for(const k in SIN){ if(m[k]!==undefined)continue; if(SIN[k].includes(n)){m[k]=ci;hits++;break} } });
+    if(m.cod!==undefined&&m.desc!==undefined&&(!best||hits>best.hits))best={i,m,hits};
+    if(best&&best.hits>=5)break;
+  }
+  let start,m;
+  if(best){start=best.i+1;m=best.m}
+  else{ const r0=rows[0]||[]; if(r0.length<2||isNaN(parseFloat(String(r0[0]).replace(',','.'))))return null;
+    start=0;m={cod:0,desc:1,un:2,saldo:3,loc:4,ficha:5,cat:6}; }
+  const itens=[];
+  for(let i=start;i<rows.length;i++){
+    const r=rows[i]; const g=k=>m[k]===undefined?'':String(r[m[k]]??'').trim();
+    let cod=g('cod'),desc=g('desc'); if(!cod||!desc)continue;
+    if(/^\d+\.0+$/.test(cod))cod=cod.replace(/\.0+$/,'');
+    const saldo=num(g('saldo'));
+    let ficha=g('ficha'); if(/^\d+\.0+$/.test(ficha))ficha=ficha.replace(/\.0+$/,'');
+    const cat=g('cat').split(';').map(s=>s.trim()).filter(Boolean).join(';');
+    itens.push({cod,desc,un:g('un'),saldo,loc:g('loc'),ficha,cat});
+  }
+  return {itens};
+}
+/*PARSER-FIM*/
+
+/*EXPORT-INICIO*/
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+async function deflarRaw(u8){const cs=new CompressionStream('deflate-raw');return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(cs)).arrayBuffer())}
+function zipEntradas(buf){
+  const d=new DataView(buf); let e=-1;
+  for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65600);i--){if(u32(d,i)===0x06054b50){e=i;break}}
+  if(e<0)throw new Error('Planilha-base inválida.');
+  const n=u16(d,e+10); let p=u32(d,e+16); const lista=[]; const td=new TextDecoder();
+  for(let i=0;i<n;i++){
+    if(u32(d,p)!==0x02014b50)break;
+    const nl=u16(d,p+28),el=u16(d,p+30),cl=u16(d,p+32),off=u32(d,p+42),cs=u32(d,p+20);
+    const nome=new Uint8Array(buf.slice(p+46,p+46+nl));
+    const ini=off+30+u16(d,off+26)+u16(d,off+28);
+    lista.push({nome:td.decode(nome),nomeB:nome,flags:u16(d,p+8)&0x0800,meth:u16(d,p+10),time:u16(d,p+12),date:u16(d,p+14),crc:u32(d,p+16),cs,us:u32(d,p+24),dados:new Uint8Array(buf,ini,cs)});
+    p+=46+nl+el+cl;
+  }
+  return lista;
+}
+function zipEscrever(lista,mime){
+  const partes=[],central=[]; let off=0;
+  for(const e of lista){
+    const lh=new Uint8Array(30+e.nomeB.length),v=new DataView(lh.buffer);
+    v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,e.flags,true);v.setUint16(8,e.meth,true);v.setUint16(10,e.time,true);v.setUint16(12,e.date,true);
+    v.setUint32(14,e.crc,true);v.setUint32(18,e.cs,true);v.setUint32(22,e.us,true);v.setUint16(26,e.nomeB.length,true);v.setUint16(28,0,true);lh.set(e.nomeB,30);
+    const ch=new Uint8Array(46+e.nomeB.length),c=new DataView(ch.buffer);
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,e.flags,true);c.setUint16(10,e.meth,true);c.setUint16(12,e.time,true);c.setUint16(14,e.date,true);
+    c.setUint32(16,e.crc,true);c.setUint32(20,e.cs,true);c.setUint32(24,e.us,true);c.setUint16(28,e.nomeB.length,true);c.setUint32(42,off,true);ch.set(e.nomeB,46);
+    partes.push(lh,e.dados);central.push(ch);off+=lh.length+e.dados.length;
+  }
+  let tam=0;central.forEach(x=>tam+=x.length);
+  const fim=new Uint8Array(22),f=new DataView(fim.buffer);
+  f.setUint32(0,0x06054b50,true);f.setUint16(8,lista.length,true);f.setUint16(10,lista.length,true);f.setUint32(12,tam,true);f.setUint32(16,off,true);
+  return new Blob([...partes,...central,fim],{type:mime||'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+const xmlEsc=s=>String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function celXML(ref,sty,val){
+  const sa=sty?` s="${sty}"`:'';
+  if(val===null||val==='')return `<c r="${ref}"${sa}/>`;
+  if(typeof val==='number')return `<c r="${ref}"${sa}><v>${val}</v></c>`;
+  return `<c r="${ref}"${sa} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(val)}</t></is></c>`;
+}
+const COLS=['A','B','C','D','E','F','G','H','I','J'];
+function lerLinhaXML(xml,shared){
+  const cells={};
+  for(const m of xml.matchAll(/<c r="([A-Z]+)\d+"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+    const at=m[2],body=m[3]||''; const t=(/\bt="(\w+)"/.exec(at)||[])[1]; let txt='';
+    if(t==='inlineStr'){for(const x of body.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g))txt+=x[1];txt=unesc(txt)}
+    else{const vm=/<v>([\s\S]*?)<\/v>/.exec(body); if(vm)txt=t==='s'?(shared[+vm[1]]??''):unesc(vm[1])}
+    cells[m[1]]={s:(/\bs="(\d+)"/.exec(at)||[])[1]||'',txt,t};
+  }
+  return cells;
+}
+function setCel(xml,col,r,sty,val){
+  const novo=celXML(col+r,sty,val); const re=new RegExp('<c r="'+col+r+'"[^>]*?(?:/>|>[\\s\\S]*?</c>)');
+  if(re.test(xml))return xml.replace(re,()=>novo);
+  return xml.replace('</row>',()=>novo+'</row>');
+}
+const catN=c=>String(c??'').split(';').map(x=>x.trim()).filter(Boolean).join(';');
+const tr=v=>String(v??'').trim();
+async function exportarXlsx(itens,baseBuf){
+  const lista=zipEntradas(baseBuf); const get=n=>lista.find(e=>e.nome===n);
+  const dec=async e=>{const u=e.meth===0?e.dados:await inflar(e.dados);return new TextDecoder('utf-8').decode(u)};
+  const wbx=await dec(get('xl/workbook.xml')); const rels=await dec(get('xl/_rels/workbook.xml.rels'));
+  const rid=/<sheet\b[^>]*name="CADASTRO"[^>]*r:id="([^"]+)"/.exec(wbx); if(!rid)throw new Error('A planilha-base não tem a aba CADASTRO.');
+  let alvo=null; for(const m of rels.matchAll(/<Relationship\b[^>]*>/g)){ if(m[0].includes('Id="'+rid[1]+'"')){alvo=/Target="([^"]+)"/.exec(m[0])[1]} }
+  const sheetNome='xl/'+alvo.replace(/^\//,'').replace(/^xl\//,'');
+  const eSheet=get(sheetNome); if(!eSheet)throw new Error('Aba CADASTRO não encontrada.');
+  const shared=lerShared(await dec(get('xl/sharedStrings.xml')));
+  const xml=await dec(eSheet);
+  const i0=xml.indexOf('<sheetData>')+11, i1=xml.indexOf('</sheetData>');
+  const head=xml.slice(0,i0), tail=xml.slice(i1);
+  const linhas=new Map(); // r -> xml
+  for(const m of xml.slice(i0,i1).matchAll(/<row\b[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g)){
+    let rx=m[0]; const r=+/\br="(\d+)"/.exec(rx)[1]; if(rx.endsWith('/>')&&!rx.includes('</row>'))rx=rx.slice(0,-2)+'></row>'; linhas.set(r,rx);
+  }
+  // código -> linha (a última repetição vale)
+  const porCod=new Map(); let ultimaComCod=3; let tpl=null;
+  for(const [r,rx] of linhas){ if(r<4)continue; const c=lerLinhaXML(rx,shared); const cod=c.A&&tr(c.A.txt);
+    if(cod){porCod.set(cod,r); if(r>ultimaComCod)ultimaComCod=r; if(!tpl)tpl=c} }
+  const sty=col=>(tpl&&tpl[col]&&tpl[col].s)||'';
+  let alteradas=0,novas=0,iguais=0,prox=ultimaComCod+1,maxR=0;
+  for(const it of itens){
+    const r=porCod.get(it.cod);
+    if(r!==undefined){
+      let rx=linhas.get(r); const c=lerLinhaXML(rx,shared); let mud=false;
+      const por=(col,val)=>{rx=setCel(rx,col,r,(c[col]&&c[col].s)||sty(col),val);mud=true};
+      if(tr(c.B&&c.B.txt)!==tr(it.desc))por('B',it.desc);
+      if(tr(c.C&&c.C.txt)!==tr(it.un))por('C',it.un);
+      const dOrig=c.D?num(c.D.txt):0; if(Math.abs(dOrig-(+it.saldo||0))>1e-9)por('D',+it.saldo||0);
+      if(tr(c.E&&c.E.txt)!==tr(it.loc))por('E',it.loc);
+      if(tr(c.F&&c.F.txt)!==tr(it.ficha))por('F',it.ficha);
+      if(catN(c.H&&c.H.txt)!==catN(it.cat))por('H',catN(it.cat));
+      if(mud){linhas.set(r,rx);alteradas++}else iguais++;
+    }else{
+      const r2=prox++; const numOK=/^\d{1,15}$/.test(it.cod);
+      let rx=`<row r="${r2}" spans="1:10" x14ac:dyDescent="0.35">`+
+        celXML('A'+r2,sty('A'),numOK?Number(it.cod):it.cod)+celXML('B'+r2,sty('B'),it.desc)+celXML('C'+r2,sty('C'),it.un)+celXML('D'+r2,sty('D'),+it.saldo||0)+
+        celXML('E'+r2,sty('E'),it.loc)+celXML('F'+r2,sty('F'),it.ficha)+celXML('G'+r2,sty('G'),null)+celXML('H'+r2,sty('H'),catN(it.cat))+celXML('I'+r2,sty('I'),null)+celXML('J'+r2,sty('J'),null)+'</row>';
+      linhas.set(r2,rx);novas++;
+    }
+  }
+  for(const r of linhas.keys())if(r>maxR)maxR=r;
+  const ord=[...linhas.keys()].sort((a,b)=>a-b);
+  let novoXml=head.replace(/<dimension ref="A1:J(\d+)"\s*\/>/,(m,n)=>`<dimension ref="A1:J${Math.max(+n,maxR)}" />`)+ord.map(r=>linhas.get(r)).join('')+tail;
+  // tabela: estende se passou do limite
+  let tabNome=null,tabXml=null;
+  const relS=get(sheetNome.replace('worksheets/','worksheets/_rels/')+'.rels');
+  if(relS){const rt=await dec(relS); const m=/Target="\.\.\/(tables\/[^"]+)"/.exec(rt); if(m)tabNome='xl/'+m[1]}
+  if(tabNome&&get(tabNome)){const tx=await dec(get(tabNome)); const rf=/ref="A3:J(\d+)"/.exec(tx); if(rf&&maxR>+rf[1]){tabXml=tx.split('J'+rf[1]).join('J'+maxR).split('B3:B'+rf[1]).join('B3:B'+maxR)}}
+  const te=new TextEncoder(); const subs=new Map();
+  const comp=async(u8)=>({u8,c:await deflarRaw(u8)});
+  const bs=te.encode(novoXml); const cs=await comp(bs); subs.set(sheetNome,{bytes:bs,comp:cs.c});
+  if(tabXml){const tb=te.encode(tabXml);subs.set(tabNome,{bytes:tb,comp:(await comp(tb)).c})}
+  const saida=lista.map(e=>{const s=subs.get(e.nome); if(!s)return e;
+    return {...e,meth:8,crc:crc32(s.bytes),cs:s.comp.length,us:s.bytes.length,dados:s.comp}});
+  return {blob:zipEscrever(saida),stats:{alteradas,novas,iguais,total:itens.length}};
+}
+/*EXPORT-FIM*/
+
+
+/* ===================== consulta ===================== */
+let filtro='todos', mostrar=40, qAtual='';
+function resultados(){
+  const q=norm(qAtual); let r=items;
+  if(filtro==='com')r=r.filter(i=>i.saldo>0); else if(filtro==='sem')r=r.filter(i=>!(i.saldo>0)); else if(filtro==='pend')r=r.filter(i=>i.pend);
+  if(!q)return {lista:r,busca:false};
+  const toks=q.split(' ');
+  r=r.filter(i=>toks.every(t=>i.h.includes(t)));
+  const exato=norm(q);
+  r=r.map(i=>({i,s:i.cod===qAtual.trim()?0:norm(i.cod).startsWith(exato)?1:norm(i.desc).startsWith(exato)?2:3}))
+     .sort((a,b)=>a.s-b.s||a.i.desc.localeCompare(b.i.desc)).map(x=>x.i);
+  return {lista:r,busca:true};
+}
+function cardHTML(it,hero){
+  const tem=it.saldo>0;
+  const sl=it.loc&&!/^sem local$/i.test(it.loc);
+  return `<div class="card glass ${tem?'':'zero'} ${hero?'hero':''} ${it.pend?'pend':''}" data-c="${esc(it.cod)}">
+    <div class="l1"><div class="cbox"><small>CÓDIGO</small>${it.pend?'<div class="cod pendc">⏳ PENDENTE</div>':`<div class="cod">${esc(it.cod)}</div>`}</div>
+      <div class="saldo"><small>SALDO</small>${tem?`<b>${fmtN(it.saldo)}</b><em>${esc(it.un||'')}</em>`:`<b class="z">ZERO</b>`}</div></div>
+    <div class="locg ${sl?'':'nl'}"><span>📍</span>${sl?esc(it.loc):'SEM LOCAL'}</div>
+    <div class="desc">${esc(it.desc)}</div></div>`;
+}
+let tBusca;
+function desenhar(){
+  const {lista,busca}=resultados(); const box=$('#lista'); const info=$('#info');
+  if(!items.length){
+    info.textContent='';
+    box.innerHTML=`<div class="vazio"><div class="big">📦</div><b style="color:var(--txt);font-size:16px">Nenhum material cadastrado</b><br>Vá em <b>Cadastro</b> para importar sua planilha Excel ou cadastrar um material manualmente.<br><br><button class="btn pri" id="irCad">Ir para Cadastro</button></div>`;
+    $('#irCad').onclick=()=>aba('cadastro');return;}
+  if(!busca){
+    info.textContent=`Digite um código ou nome. ${lista.length.toLocaleString('pt-BR')} materiais ${filtro==='com'?'com saldo':filtro==='sem'?'sem saldo':filtro==='pend'?'pendentes de código':'no total'}.`;
+    box.innerHTML=lista.slice(0,mostrar).map(i=>cardHTML(i,false)).join('')+(lista.length>mostrar?'<button class="btn sec mais" id="mais">Ver mais</button>':'');
+  }else{
+    info.textContent=`${lista.length.toLocaleString('pt-BR')} resultado${lista.length===1?'':'s'}`;
+    if(!lista.length){box.innerHTML=`<div class="vazio"><div class="big">🔎</div>Nada encontrado para <b>${esc(qAtual)}</b>.<br>Confira o código ou tente outra parte do nome.</div>`;return}
+    const ex=lista[0].cod===qAtual.trim();
+    box.innerHTML=lista.slice(0,mostrar).map((i,k)=>cardHTML(i,ex&&k===0)).join('')+(lista.length>mostrar?'<button class="btn sec mais" id="mais">Ver mais</button>':'');
+  }
+  const mb=$('#mais'); if(mb)mb.onclick=()=>{mostrar+=40;desenhar()};
+}
+$('#q').addEventListener('input',e=>{qAtual=e.target.value;mostrar=40;$('#qx').classList.toggle('hidden',!qAtual);clearTimeout(tBusca);tBusca=setTimeout(desenhar,110)});
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur()});
+$('#qx').onclick=()=>{$('#q').value='';qAtual='';$('#qx').classList.add('hidden');desenhar();$('#q').focus()};
+$('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;filtro=b.dataset.f;$$('.chip').forEach(c=>c.classList.toggle('on',c===b));mostrar=40;desenhar()});
+$('#alertaPend').onclick=()=>{filtro='pend';$$('.chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='pend'));mostrar=40;desenhar()};
+$('#lista').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)abrirDetalhe(c.dataset.c)});
+
+/* detalhe */
+function abrirDetalhe(cod){
+  const it=byCod.get(cod); if(!it)return;
+  const cats=it.cat?it.cat.split(';').map(c=>`<span class="pill cat">${esc(c)}</span>`).join(' '):'—';
+  $('#modal').innerHTML=`<div class="shade" id="shade"><div class="sheet"><div class="grip"></div>
+    <div class="cod" style="font-size:15px${it.pend?';color:var(--warn)':''}">${it.pend?'⏳ SEM CÓDIGO (PENDENTE)':'CÓD '+esc(it.cod)}</div><h2>${esc(it.desc)}</h2>
+    <div class="kv">
+      <div><small>Saldo</small><b style="color:${it.saldo>0?'var(--ok)':'var(--bad)'}">${it.saldo>0?fmtN(it.saldo):'SEM SALDO'}</b></div>
+      <div><small>Unidade</small><b>${esc(it.un||'—')}</b></div>
+      <div class="w"><small>Localização</small><b>${esc(it.loc||'—')}</b></div>
+      <div><small>Nº ficha</small><b>${esc(it.ficha||'—')}</b></div>
+      <div><small>Categoria</small><b style="font-size:13px">${cats}</b></div>
+    </div>
+    <div class="acoes"><button class="btn bad" id="dDel">Excluir</button><button class="btn pri" id="dEd">Editar</button></div></div></div>`;
+  $('#shade').onclick=e=>{if(e.target.id==='shade')fechar()};
+  $('#dEd').onclick=()=>{fechar();editar(cod)};
+  $('#dDel').onclick=async()=>{ if(!confirm('Excluir este material?'))return; await dbDel(cod);items=items.filter(i=>i.cod!==cod);reindex();fechar();desenhar();recentes();toast('Material excluído')};
+}
+const fechar=()=>{$('#modal').innerHTML=''};
+
+/* ===================== cadastro manual ===================== */
+let editando=null, recCods=[];
+function rotuloSalvar(){const vazio=!$('#fCod').value.trim();$('#fSalvar').textContent=editando?(vazio&&byCod.get(editando)&&byCod.get(editando).pend?'Salvar (continua pendente)':'Salvar alterações'):(vazio?'Salvar como pendente':'Salvar material')}
+function limparForm(){['fCod','fDesc','fUn','fSaldo','fLoc','fFicha','fCat'].forEach(i=>$('#'+i).value='');editando=null;$('#formTitulo').textContent='Novo material';$('#fCancel').classList.add('hidden');rotuloSalvar()}
+$('#fCod').addEventListener('input',rotuloSalvar);
+function editar(cod){
+  const it=byCod.get(cod); if(!it)return;
+  aba('cadastro');subAba('manual');editando=cod;
+  $('#fCod').value=it.pend?'':it.cod;$('#fDesc').value=it.desc;$('#fUn').value=it.un;$('#fSaldo').value=it.saldo;$('#fLoc').value=it.loc;$('#fFicha').value=it.ficha;$('#fCat').value=it.cat;
+  $('#formTitulo').textContent=it.pend?'Editando material pendente':'Editando material';$('#fCancel').classList.remove('hidden');rotuloSalvar();
+  $('#main').scrollTo({top:0,behavior:'smooth'});
+}
+$('#fCancel').onclick=limparForm;
+$('#fSalvar').onclick=async()=>{
+  let cod=$('#fCod').value.trim(); const desc=$('#fDesc').value.trim();
+  if(!desc){toast(cod?'Preencha código e descrição':'Preencha pelo menos a descrição');return}
+  const antigo=editando?byCod.get(editando):null, eraPend=!!(antigo&&antigo.pend), pend=!cod;
+  if(pend&&antigo&&!eraPend){toast('Este material já tem código: informe o código');return}
+  if(pend)cod=eraPend?editando:novaChavePend();
+  const cat=$('#fCat').value.split(';').map(s=>s.trim()).filter(Boolean).join(';');
+  const base={cod,desc,un:$('#fUn').value.trim(),saldo:parseFloat(String($('#fSaldo').value).replace(',','.'))||0,loc:$('#fLoc').value.trim(),ficha:$('#fFicha').value.trim(),cat};
+  if(pend)base.pend=true;
+  const it=prep(base);
+  const existia=byCod.has(cod);
+  if(!pend){
+    if(editando&&editando!==cod){ if(existia&&!confirm('Já existe o código '+cod+'. Substituir esse material?'))return }
+    else if(!editando&&existia&&!confirm('Já existe o código '+cod+'. Atualizar esse material?'))return;
+  }
+  if(editando&&editando!==cod){await dbDel(editando);items=items.filter(i=>i.cod!==editando)}
+  await dbPutMany([limpo(it)]);
+  const k=items.findIndex(i=>i.cod===cod); if(k>=0)items[k]=it; else items.push(it);
+  recCods=[cod,...recCods.filter(c=>c!==cod&&c!==editando)].slice(0,8);
+  reindex();limparForm();recentes();desenhar();buzz();
+  toast(pend?'Salvo como pendente ⏳ (falta o código)':eraPend?'Código definido ✓ material cadastrado':existia?'Material atualizado ✓':'Material cadastrado ✓');
+};
+function recentes(){
+  const l=recCods.map(c=>byCod.get(c)).filter(Boolean);
+  $('#recentes').innerHTML=l.length?l.map(i=>`<div class="mini"><div><b${i.pend?' style="color:var(--warn)"':''}>${i.pend?'⏳ SEM CÓDIGO':'CÓD '+esc(i.cod)}</b><p>${esc(i.desc)}</p></div><button data-e="${esc(i.cod)}">Editar</button></div>`).join(''):'<div class="ajuda">Os materiais que você cadastrar agora aparecem aqui.</div>';
+}
+$('#recentes').addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(b)editar(b.dataset.e)});
+
+/* ===================== importar ===================== */
+function subAba(s){$$('#v-cadastro .seg button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));['manual','importar','exportar','celular'].forEach(x=>$('#s-'+x).classList.toggle('hidden',s!==x));if(s==='celular')infoCelular()}
+$('#v-cadastro .seg').addEventListener('click',e=>{const b=e.target.closest('button');if(b)subAba(b.dataset.s)});
+function prog(p){const b=$('#bar');b.classList.remove('hidden');b.firstElementChild.style.width=Math.round(p*100)+'%'}
+const L=n=>Number(n).toLocaleString('pt-BR');
+const agora=()=>{const d=new Date();return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};
+let meta={cad:null,mega:null}, megaMapa=null;
+try{meta=Object.assign(meta,JSON.parse(localStorage.getItem('estoque-meta')||'{}'));megaMapa=JSON.parse(localStorage.getItem('estoque-mega')||'null')}catch(e){}
+function salvarMeta(){try{localStorage.setItem('estoque-meta',JSON.stringify(meta));localStorage.setItem('estoque-mega',JSON.stringify(megaMapa))}catch(e){}}
+function status(){
+  $('#stCad').innerHTML=meta.cad?`✅ <b>${L(meta.cad.n)}</b> materiais lidos de <b>${esc(meta.cad.nome)}</b><br>${esc(meta.cad.data)}`:'Nenhum cadastro importado ainda.';
+  $('#stMega').innerHTML=meta.mega?`✅ <b>${L(meta.mega.n)}</b> códigos lidos de <b>${esc(meta.mega.nome)}</b>${meta.mega.almox?'<br>'+esc(meta.mega.almox):''}<br>${esc(meta.mega.data)}`:'Nenhum arquivo do MEGA importado ainda.';
+}
+/* saldo = MEGA (fonte da verdade) */
+async function aplicarMega(mapa,{zerar,faltantes,nomes}){
+  const st={alterados:0,zerados:0,iguais:0,fora:0,novos:0,nomes:0}; const mudou=[];
+  for(const it of items){
+    if(it.pend)continue;
+    const m=mapa.get(it.cod); let novo;
+    if(m!==undefined)novo=m; else novo=zerar?0:it.saldo;
+    let mud=false;
+    if(novo!==it.saldo){ if(it.saldo>0&&novo===0)st.zerados++; else st.alterados++; it.saldo=novo; mud=true } else st.iguais++;
+    if(nomes&&m!==undefined){ const dn=((megaDesc.get(it.cod)||{}).desc||'').trim(); if(dn&&dn!==String(it.desc||'').trim()){ it.desc=dn; st.nomes++; mud=true } }
+    if(mud){ prep(it); mudou.push(limpo(it)) }
+  }
+  const faltam=[...mapa.keys()].filter(c=>!byCod.has(c)); st.fora=faltam.length;
+  if(faltantes&&faltam.length){ for(const c of faltam){const d=megaDesc.get(c)||{};const it=prep({cod:c,desc:d.desc||('Material '+c),un:d.un||'',saldo:mapa.get(c),loc:'',ficha:'',cat:''});items.push(it);mudou.push(limpo(it));st.novos++} reindex() }
+  for(let i=0;i<mudou.length;i+=1500)await dbPutMany(mudou.slice(i,i+1500));
+  return st;
+}
+let megaDesc=new Map();
+async function importarCadastro(r,aba){
+  if($('#substituir').checked){const pp=items.filter(i=>i.pend);await dbClear();items=[];if(pp.length){await dbPutMany(pp.map(limpo));items=pp}}
+  const mapa=new Map(items.map(i=>[i.cod,i])); let novos=0,atual=0; const gravar=[];
+  for(const x of r.itens){const it=prep(x); if(mapa.has(x.cod))atual++;else novos++; mapa.set(x.cod,it); gravar.push(x)}
+  for(let i=0;i<gravar.length;i+=1500){await dbPutMany(gravar.slice(i,i+1500));prog(.7+.2*Math.min(1,(i+1500)/gravar.length))}
+  items=[...mapa.values()]; reindex();
+  let extra='';
+  if(r.sync){ extra='<br>📱 Arquivo de outro celular: saldos mantidos como no arquivo.'; if(megaMapa){megaMapa=null;meta.mega=null} }
+  else if(megaMapa){ const st=await aplicarMega(new Map(Object.entries(megaMapa)),{zerar:$('#zerar').checked,faltantes:false}); extra=`<br>📊 Saldo reajustado pelo MEGA: ${L(st.alterados+st.zerados)} materiais mudaram.`}
+  return `✅ <b>${L(r.itens.length)}</b> materiais lidos da aba <b>${esc(aba)}</b><br>🆕 ${L(novos)} cadastrados · 🔄 ${L(atual)} atualizados${extra}<br>Total no app: <b>${L(items.length)}</b>`;
+}
+async function importarMega(r,aba,nome){
+  const mapa=new Map(); r.itens.forEach(x=>{mapa.set(x.cod,x.saldo);megaDesc.set(x.cod,{desc:x.desc,un:x.un})});
+  megaMapa=Object.fromEntries(mapa);
+  meta.mega={n:mapa.size,nome,almox:r.almox||'',data:agora()};
+  const st=await aplicarMega(mapa,{zerar:$('#zerar').checked,faltantes:$('#faltantes').checked,nomes:true});
+  if(!items.length)return `⚠️ Saldo do MEGA guardado (<b>${L(mapa.size)}</b> códigos), mas ainda não há cadastro. Importe o <b>1 · Cadastro das cestas</b> e o saldo será aplicado sozinho.`;
+  return `✅ <b>${L(mapa.size)}</b> códigos lidos do MEGA (aba <b>${esc(aba)}</b>)<br>🔄 ${L(st.alterados)} saldos atualizados · ⬇️ ${L(st.zerados)} zerados · = ${L(st.iguais)} já estavam iguais<br>✏️ ${L(st.nomes)} nomes atualizados pela descrição do MEGA`
+    +(st.novos?`<br>🆕 ${L(st.novos)} códigos do MEGA cadastrados (sem local)`:(st.fora?`<br>ℹ️ ${L(st.fora)} códigos do MEGA não existem no cadastro (ignorados)`:''));
+}
+async function processar(f,slot){
+  const out=$('#resultado'); out.innerHTML='';
+  try{
+    prog(.05); let r,aba;
+    if(/\.(csv|txt)$/i.test(f.name)){r=escolher(parseCSV(await f.text())); aba='CSV'}
+    else{ if(f.size>60e6)throw new Error('GRANDE'); r=await lerXlsx(await f.arrayBuffer(),prog,escolher); aba=r&&r.aba}
+    if(!r)throw new Error('Não encontrei as colunas CÓD e DESCRIÇÃO (cadastro) ou CÓD e QUANTIDADE (MEGA).');
+    prog(.7);
+    const aviso=r.tipo!==slot?`<div style="margin-bottom:8px">🔎 Reconheci que esse arquivo é o <b>${r.tipo==='mega'?'do MEGA (saldo)':'cadastro das cestas'}</b> e usei do jeito certo.</div>`:'';
+    let msg;
+    if(r.tipo==='mega')msg=await importarMega(r,aba,f.name);
+    else{ msg=await importarCadastro(r,aba); meta.cad={n:r.itens.length,nome:f.name,data:agora()} }
+    salvarMeta(); status(); desenhar(); prog(1); buzz();
+    out.innerHTML=`<div class="res">${aviso}${msg}</div>`; toast('Importação concluída ✓');
+  }catch(err){
+    $('#bar').classList.add('hidden'); const g=/GRANDE/.test(err.message);
+    out.innerHTML=`<div class="res err">⚠️ ${g?'Essa planilha é pesada demais para abrir no celular. Copie só os dados para um arquivo novo e importe de novo.':esc(err.message||'Não consegui ler esse arquivo.')}</div>`;
+  }
+}
+$('#arqCad').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(f)await processar(f,'cadastro')});
+$('#arqMega').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(f)await processar(f,'mega')});
+
+/* ===================== ajustes (cores) ===================== */
+const PRESETS=[['Ciano','#00E5FF','#7C4DFF'],['Verde','#39FF14','#00E5FF'],['Magenta','#FF2BD6','#7C4DFF'],['Laranja','#FF9100','#FF2B5E'],['Violeta','#A066FF','#00E5FF'],['Azul','#2F8CFF','#00F0C8']];
+const hex2rgb=h=>{h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16))};
+function hslShift(hex,dh){let [r,g,b]=hex2rgb(hex).map(v=>v/255);const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h,s,l=(mx+mn)/2;const d=mx-mn;
+  if(!d){h=0;s=0}else{s=l>.5?d/(2-mx-mn):d/(mx+mn);h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;h*=60}
+  h=(h+dh+360)%360;s=Math.max(s,.8);l=Math.min(Math.max(l,.55),.65);
+  const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let q=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];
+  return '#'+q.map(v=>Math.round((v+m)*255).toString(16).padStart(2,'0')).join('')}
+const PADRAO={acc:'#00E5FF',acc2:'#7C4DFF',glass:14,blur:18,glow:100,anim:true};
+let cfg={...PADRAO};
+try{Object.assign(cfg,JSON.parse(localStorage.getItem('estoque-cfg')||'{}'))}catch(e){}
+function aplicar(salvar=true){
+  const r=document.documentElement.style;
+  r.setProperty('--acc',cfg.acc);r.setProperty('--acc-rgb',hex2rgb(cfg.acc).join(','));
+  r.setProperty('--acc2',cfg.acc2);r.setProperty('--acc2-rgb',hex2rgb(cfg.acc2).join(','));
+  r.setProperty('--glass',cfg.glass/100);r.setProperty('--blur',cfg.blur+'px');r.setProperty('--glow',cfg.glow/100);
+  document.body.classList.toggle('sem-anim',!cfg.anim);
+  document.querySelector('meta[name=theme-color]').content='#04060F';
+  $('#tV').textContent=cfg.glass+'%';$('#dV').textContent=cfg.blur+'px';$('#bV').textContent=cfg.glow+'%';
+  $('#rGlass').value=cfg.glass;$('#rBlur').value=cfg.blur;$('#rGlow').value=cfg.glow;$('#swAnim').checked=cfg.anim;$('#corCustom').value=cfg.acc.toLowerCase();
+  $$('.cor').forEach(c=>c.classList.toggle('on',c.dataset.a.toLowerCase()===cfg.acc.toLowerCase()));
+  if(salvar)try{localStorage.setItem('estoque-cfg',JSON.stringify(cfg))}catch(e){}
+}
+$('#cores').innerHTML=PRESETS.map(p=>`<button class="cor" data-a="${p[1]}" data-b="${p[2]}"><i style="background:linear-gradient(135deg,${p[1]},${p[2]});box-shadow:0 0 14px ${p[1]}"></i>${p[0]}</button>`).join('');
+$('#cores').addEventListener('click',e=>{const b=e.target.closest('.cor');if(!b)return;cfg.acc=b.dataset.a;cfg.acc2=b.dataset.b;aplicar()});
+$('#corCustom').addEventListener('input',e=>{cfg.acc=e.target.value;cfg.acc2=hslShift(e.target.value,70);aplicar()});
+$('#rGlass').oninput=e=>{cfg.glass=+e.target.value;aplicar()};
+$('#rBlur').oninput=e=>{cfg.blur=+e.target.value;aplicar()};
+$('#rGlow').oninput=e=>{cfg.glow=+e.target.value;aplicar()};
+$('#swAnim').onchange=e=>{cfg.anim=e.target.checked;aplicar()};
+$('#bReset').onclick=()=>{cfg={...PADRAO};aplicar();toast('Visual restaurado')};
+$('#bLimpa').onclick=async()=>{ if(!items.length){toast('Não há materiais');return} if(!confirm('Apagar TODOS os '+items.length+' materiais deste aparelho?'))return; await dbClear();items=[];reindex();desenhar();recentes();toast('Cadastro apagado')};
+async function exportarExcel(){
+  const bar=$('#barExp'),out=$('#resExp'); out.innerHTML=''; bar.classList.remove('hidden'); const setP=p=>bar.firstElementChild.style.width=Math.round(p*100)+'%'; setP(.08);
+  const pend=items.filter(i=>i.pend).length, prontos=items.filter(i=>!i.pend);
+  if(!prontos.length){bar.classList.add('hidden');out.innerHTML='<div class="res err">⚠️ Não há materiais com código para exportar.'+(pend?' Os '+pend+' pendentes ficam de fora.':'')+'</div>';return}
+  try{
+    const r0=await fetch('planilha-base.xlsx',{cache:'no-cache'}).catch(()=>fetch('planilha-base.xlsx'));
+    if(!r0||!r0.ok)throw new Error('Não encontrei a planilha-base.xlsx na raiz do app.');
+    const buf=await r0.arrayBuffer(); setP(.35);
+    const {blob,stats}=await exportarXlsx(prontos.map(limpo),buf); setP(.9);
+    const d=new Date(),p2=n=>String(n).padStart(2,'0'); const nome=`ESTOQUE_OBRA_269_PARQUE_DOS_BURITIS_ATUALIZADO_${p2(d.getDate())}-${p2(d.getMonth()+1)}-${String(d.getFullYear()).slice(2)}.xlsx`;
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000);
+    setP(1); buzz();
+    out.innerHTML=`<div class="res">✅ Planilha gerada: <b>${esc(nome)}</b><br>🔄 ${L(stats.alteradas)} materiais atualizados · 🆕 ${L(stats.novas)} novos · = ${L(stats.iguais)} sem mudança${pend?`<br>⏳ ${L(pend)} pendente${pend===1?'':'s'} de código ficaram de fora`:''}<br><small style="color:var(--mut)">${(blob.size/1048576).toFixed(1)} MB. Se o download não abrir, procure o arquivo em Downloads/Arquivos.</small></div>`;
+    toast('Excel exportado ✓');
+  }catch(err){bar.classList.add('hidden');out.innerHTML=`<div class="res err">⚠️ ${esc(err.message||'Não consegui gerar a planilha.')}</div>`}
+}
+/* ===================== exportar para outro celular ===================== */
+const CEL_COLS=['CÓD','DESCRIÇÃO','UNID','SALDO','LOCALIZAÇÃO','Nº FICHA','CATEGORIA'];
+function xlsxCadastroSimples(itens){
+  const L7=['A','B','C','D','E','F','G'];
+  const lin=(r,vals,sty)=>`<row r="${r}">`+vals.map((v,i)=>celXML(L7[i]+r,sty,v)).join('')+'</row>';
+  let rows=lin(1,CEL_COLS,'1');
+  itens.forEach((it,k)=>{
+    const r=k+2, cod=String(it.cod), numOK=/^[1-9]\d{0,14}$/.test(cod)||cod==='0';
+    rows+=lin(r,[numOK?Number(cod):cod,it.desc||'',it.un||'',Number(it.saldo)||0,it.loc||'',it.ficha||'',catN(it.cat)],'');
+  });
+  const n=itens.length+1;
+  const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+   +`<dimension ref="A1:G${n}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+   +'<cols><col min="1" max="1" width="10" customWidth="1"/><col min="2" max="2" width="70" customWidth="1"/><col min="3" max="3" width="8" customWidth="1"/><col min="4" max="4" width="10" customWidth="1"/><col min="5" max="5" width="22" customWidth="1"/><col min="6" max="6" width="12" customWidth="1"/><col min="7" max="7" width="22" customWidth="1"/></cols>'
+   +`<sheetData>${rows}</sheetData><autoFilter ref="A1:G${n}"/></worksheet>`;
+  const arq={
+   '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+   '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+   'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="CADASTRO" sheetId="1" r:id="rId1"/></sheets></workbook>',
+   'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+   'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
+   'xl/worksheets/sheet1.xml':sheet};
+  const te=new TextEncoder(), lista=[];
+  for(const nome in arq){const b=te.encode(arq[nome]);lista.push({nome,nomeB:te.encode(nome),flags:0x0800,meth:0,time:0,date:0x21,crc:crc32(b),cs:b.length,us:b.length,dados:b})}
+  return zipEscrever(lista);
+}
+let arqCel=null;
+function infoCelular(){
+  const pr=items.filter(i=>!i.pend), c=pr.length, s=pr.filter(i=>i.saldo>0).length, pd=items.length-c;
+  $('#infoCel').innerHTML=(c?`Serão enviados <b>${L(c)}</b> materiais (<b>${L(s)}</b> com saldo).`:'Não há materiais com código para exportar.')+(pd?`<br>⏳ <b style="color:var(--warn)">${L(pd)}</b> pendente${pd===1?'':'s'} de código ficam de fora, só neste celular.`:'');
+}
+async function exportarCelular(){
+  const bar=$('#barCel'),out=$('#resCel'),bs=$('#bCelShare'); out.innerHTML=''; bs.classList.add('hidden'); arqCel=null;
+  const prontos=items.filter(i=>!i.pend), pend=items.length-prontos.length;
+  if(!prontos.length){out.innerHTML='<div class="res err">⚠️ Não há materiais com código para exportar.</div>';return}
+  bar.classList.remove('hidden'); bar.firstElementChild.style.width='30%';
+  try{
+    await new Promise(r=>setTimeout(r,30));
+    const ord=prontos.map(limpo).sort((a,b)=>String(a.desc).localeCompare(String(b.desc),'pt-BR'));
+    const blob=xlsxCadastroSimples(ord); bar.firstElementChild.style.width='85%';
+    const d=new Date(),p2=n=>String(n).padStart(2,'0');
+    const nome=`ESTOQUE_CADASTRO_CELULAR_${p2(d.getDate())}-${p2(d.getMonth()+1)}-${String(d.getFullYear()).slice(2)}_${p2(d.getHours())}h${p2(d.getMinutes())}.xlsx`;
+    arqCel=new File([blob],nome,{type:blob.type});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000);
+    bar.firstElementChild.style.width='100%'; buzz();
+    out.innerHTML=`<div class="res">✅ Arquivo gerado: <b>${esc(nome)}</b><br>📦 ${L(ord.length)} materiais · ${(blob.size/1048576).toFixed(2)} MB${pend?`<br>⏳ ${L(pend)} pendente${pend===1?'':'s'} de código ficaram de fora`:''}<br><small style="color:var(--mut)">Se o download não abrir, procure em Downloads/Arquivos, ou use o botão de enviar abaixo.</small></div>`;
+    try{if(navigator.canShare&&navigator.canShare({files:[arqCel]}))bs.classList.remove('hidden')}catch(e){}
+    toast('Arquivo gerado ✓');
+  }catch(err){bar.classList.add('hidden');out.innerHTML=`<div class="res err">⚠️ ${esc(err.message||'Não consegui gerar o arquivo.')}</div>`}
+}
+$('#bCel').onclick=exportarCelular;
+$('#bCelShare').onclick=async()=>{if(!arqCel)return;try{await navigator.share({files:[arqCel],title:'Cadastro do estoque'})}catch(e){if(e&&e.name!=='AbortError')toast('Não consegui abrir o compartilhamento')}};
+$('#bExp').onclick=()=>{aba('cadastro');subAba('exportar');exportarExcel()};
+$('#bExcel').onclick=exportarExcel;
+$('#bExpCel').onclick=()=>{aba('cadastro');subAba('celular')};
+
+/* ===================== cestas ===================== */
+function alertaCestas(m){
+  m=m||mapaCestas(); const al=[...m.values()].filter(c=>c.al), n=al.length;
+  const html=n?`<span>⚠️</span><span><b>${n}</b> cesta${n===1?'':'s'} com número repetido para renumerar: ${al.slice(0,3).map(c=>esc(c.nome.replace(/\s*\(RENUMERAR\)\s*$/i,''))).join(', ')}${n>3?'…':''}</span><em>Ver</em>`:'';
+  ['#alertaCes','#alertaCes2'].forEach(id=>{const e=$(id);if(!e)return;e.classList.toggle('hidden',!n);e.innerHTML=html});
+  const b=$('.nav [data-t=cestas]'); let d=b.querySelector('.dot');
+  if(n){if(!d){d=document.createElement('i');d.className='dot';b.appendChild(d)}d.textContent=n}else if(d)d.remove();
+}
+const cKey=loc=>{const n=norm(loc).trim();if(!n||n==='sem local')return 'sem local';const m=/^cesta\s*0*(\d+)$/.exec(n);return m?'cesta '+Number(m[1]):n};
+const cNome=loc=>{const k=cKey(loc);if(k==='sem local')return 'SEM LOCAL';const m=/^cesta (\d+)$/.exec(k);return m?'CESTA '+m[1]:String(loc).trim().toUpperCase()};
+const cDestino=t=>{t=String(t||'').trim();return /^\d+$/.test(t)?'CESTA '+Number(t):cNome(t)};
+const kc=c=>{c=String(c).trim();return /^\d+$/.test(c)?String(Number(c)):c.toUpperCase()};
+let cSel=null, planoAtual=null, ultimoMov=null;
+function mapaCestas(){
+  const m=new Map();
+  for(const it of items){const k=cKey(it.loc);let c=m.get(k);
+    if(!c){const mm=/^cesta (\d+)$/.exec(k);c={k,nome:cNome(it.loc),n:mm?+mm[1]:null,al:ehRenum(it.loc),itens:[]};m.set(k,c)}
+    c.itens.push(it)}
+  return m;
+}
+const ehRenum=loc=>/\(RENUMERAR\)\s*$/i.test(String(loc||''));
+const ordCestas=(a,b)=>a.al!==b.al?(a.al?-1:1):(a.n!==null&&b.n!==null)?a.n-b.n:a.n!==null?-1:b.n!==null?1:a.k==='sem local'?1:b.k==='sem local'?-1:a.k.localeCompare(b.k);
+function renderCestas(){
+  const m=mapaCestas(); alertaCestas(m);
+  if(cSel){ $('#cLista').classList.add('hidden');$('#cDet').classList.remove('hidden'); detalheCesta(m); return }
+  $('#cDet').classList.add('hidden');$('#cLista').classList.remove('hidden');
+  const q=norm($('#cq').value).trim(); $('#cqx').classList.toggle('hidden',!q);
+  let lista=[...m.values()].sort(ordCestas);
+  const total=lista.length;
+  if(q)lista=lista.filter(c=>c.k.includes(q)||(c.n!==null&&String(c.n).startsWith(q)));
+  $('#cInfo').textContent=q?`${lista.length} de ${total} locais.`:`${total} locais com material cadastrado.`;
+  $('#cGrid').innerHTML=lista.length?lista.map(c=>{
+    const n=c.itens.length,t=`${n} ${n===1?'item':'itens'}`;
+    if(c.al){const nm=c.nome.replace(/\s*\(RENUMERAR\)\s*$/i,'');return `<button class="cx al" data-k="${esc(c.k)}"><span class="lb">⚠️ RENUMERAR</span><b class="t">${esc(nm)}</b><small>${t}</small></button>`}
+    return `<button class="cx" data-k="${esc(c.k)}"><span class="lb">LOCAL</span><b class="t">${esc(c.nome)}</b><small>${t}</small></button>`}).join('')
+    :`<div class="ajuda" style="grid-column:1/-1">${q?'Nenhum local com esse nome ou número tem material cadastrado.':'Nenhum material cadastrado ainda.'}</div>`;
+}
+function detalheCesta(m){
+  m=m||mapaCestas(); const c=m.get(cSel.k)||{itens:[]}; const its=[...c.itens].sort((a,b)=>String(a.desc).localeCompare(String(b.desc),'pt-BR'));
+  $('#cTit').textContent=cSel.nome; $('#cSub').style.color=ehRenum(cSel.nome)?'var(--warn)':'';
+  $('#cSub').textContent=ehRenum(cSel.nome)?`⚠️ Este número já foi usado por outro local. Renomeie este local para um número novo (${its.length} ${its.length===1?'item':'itens'}).`:its.length?`${its.length} ${its.length===1?'item':'itens'} neste local. Toque no item para mudar a quantidade ou tirar do local. O círculo seleciona para mover.`:'Este local está vazio.';
+  $('#cItens').innerHTML=its.map(it=>`<div class="ci glass ${it.pend?'np':''}" data-e="${esc(it.cod)}">${it.pend?'':`<button class="sl" data-s="${esc(it.cod)}" aria-label="Selecionar para mover"></button>`}<div class="cc">${it.pend?'⏳':esc(it.cod)}</div><div class="cd">${esc(it.desc)}</div><div class="cs ${it.saldo>0?'':'z'}">${L(it.saldo||0)}<small>${esc(it.un||'')}</small></div></div>`).join('');
+  sincSel();
+}
+function sincSel(){
+  const t=new Set($('#mCods').value.split(/[\s,;]+/).filter(Boolean).map(kc));
+  $$('#cItens .sl[data-s]').forEach(b=>{const on=t.has(kc(b.dataset.s));b.closest('.ci').classList.toggle('sel',on);b.textContent=on?'✓':''});
+}
+function abrirCesta(k){const m=mapaCestas();const c=m.get(k);cSel={k,nome:c?c.nome:cNome(k)};planoAtual=null;planoRen=null;$('#aRes').innerHTML='';['aCod','aQtd','aUn','aDesc'].forEach(i=>$('#'+i).value='');$('#rRes').innerHTML='';$('#rNovo').value='';$('#mRes').innerHTML='';$('#mCods').value='';$('#mDest').value='';$('#mOutras').checked=false;renderCestas();$('#main').scrollTo({top:0})}
+function planoMover(todos){
+  const m=mapaCestas(),c=m.get(cSel.k)||{itens:[]},dest=cDestino($('#mDest').value),dk=cKey(dest);
+  const p={ok:[],jaNoDest:[],outra:[],naoCad:[],dest,dk,de:cSel.nome,todos};
+  if(todos){c.itens.forEach(i=>p.ok.push(i))}
+  else{
+    const toks=[...new Set($('#mCods').value.split(/[\s,;]+/).filter(Boolean))];
+    const idx=new Map(items.filter(i=>!i.pend).map(i=>[kc(i.cod),i])), vistos=new Set();
+    for(const t of toks){const it=idx.get(kc(t)); if(!it){p.naoCad.push(t);continue} if(vistos.has(it.cod))continue; vistos.add(it.cod);
+      const ik=cKey(it.loc); if(ik===cSel.k)p.ok.push(it); else if(ik===dk)p.jaNoDest.push(it); else if($('#mOutras').checked)p.ok.push(it); else p.outra.push(it)}
+  }
+  p.destTem=(m.get(dk)||{itens:[]}).itens.length;
+  return p;
+}
+function mostrarPlano(todos){
+  const out=$('#mRes'); planoAtual=null;
+  if(!$('#mDest').value.trim()){out.innerHTML='<div class="res err">⚠️ Informe para qual cesta mover.</div>';return}
+  if(!todos&&!$('#mCods').value.trim()){out.innerHTML='<div class="res err">⚠️ Digite os códigos (ou use "Mover a cesta inteira").</div>';return}
+  const p=planoMover(todos);
+  if(p.dk===cSel.k){out.innerHTML='<div class="res err">⚠️ A cesta de destino é a mesma cesta atual.</div>';return}
+  const lis=a=>a.map(i=>`${esc(i.cod)}${i.pend?'':' <small style="color:var(--mut)">'+esc(cNome(i.loc))+'</small>'}`).join(', ');
+  let h=`<div class="res ${p.ok.length?'':'err'}">`;
+  h+=p.ok.length?`<div class="pl"><b>${L(p.ok.length)}</b> ${p.ok.length===1?'item':'itens'} de <b>${esc(p.de)}</b> → <b>${esc(p.dest)}</b></div>`+p.ok.slice(0,12).map(i=>`<div class="pl" style="margin:2px 0">• ${i.pend?'⏳':esc(i.cod)} — ${esc(String(i.desc).slice(0,60))}</div>`).join('')+(p.ok.length>12?`<div class="pl">… e mais ${L(p.ok.length-12)}</div>`:''):'<div class="pl">Nenhum item para mover.</div>';
+  if(p.ok.length&&p.destTem)h+=`<div class="pl w">ℹ️ ${esc(p.dest)} já tem ${L(p.destTem)} ${p.destTem===1?'item':'itens'}: eles ficam juntos.</div>`;
+  if(p.jaNoDest.length)h+=`<div class="pl w">ℹ️ Já estão em ${esc(p.dest)}: ${lis(p.jaNoDest)}</div>`;
+  if(p.outra.length)h+=`<div class="pl w">⚠️ NÃO estão em ${esc(p.de)} (não serão movidos): ${lis(p.outra)}</div>`;
+  if(p.naoCad.length)h+=`<div class="pl e">❌ Não cadastrados: ${p.naoCad.map(esc).join(', ')}</div>`;
+  h+='</div>';
+  if(p.ok.length){planoAtual=p;h+=`<button class="btn pri full" id="mOk" style="margin-top:12px">✅ Confirmar: mover ${L(p.ok.length)} ${p.ok.length===1?'item':'itens'} para ${esc(p.dest)}</button>`}
+  out.innerHTML=h;
+}
+async function aplicarMover(){
+  const p=planoAtual; if(!p||!p.ok.length)return; planoAtual=null;
+  const ant=p.ok.map(i=>({cod:i.cod,loc:i.loc}));
+  p.ok.forEach(i=>{i.loc=p.dest;prep(i)});
+  await dbPutMany(p.ok.map(limpo));
+  ultimoMov={ant,dest:p.dest,de:p.de};
+  reindex();desenhar();recentes();buzz();
+  $('#mCods').value='';
+  detalheCesta();
+  $('#mRes').innerHTML=`<div class="res">✅ ${L(p.ok.length)} ${p.ok.length===1?'item movido':'itens movidos'} de <b>${esc(p.de)}</b> para <b>${esc(p.dest)}</b>.</div><div class="acoes" style="margin-top:12px"><button class="btn sec" id="mDesf">↩️ Desfazer</button><button class="btn sec" id="mIr">Abrir ${esc(p.dest)}</button></div>`;
+  toast('Movido ✓');
+}
+async function desfazerMover(){
+  if(!ultimoMov)return; const u=ultimoMov; ultimoMov=null; const mod=[];
+  for(const a of u.ant){const it=byCod.get(a.cod);if(it){it.loc=a.loc;prep(it);mod.push(limpo(it))}}
+  await dbPutMany(mod); cSel={k:cKey(u.de),nome:u.de}; reindex();desenhar();recentes();renderCestas();
+  $('#mRes').innerHTML='';$('#rRes').innerHTML='';
+  $(u.onde||'#mRes').innerHTML=`<div class="res">↩️ Desfeito: ${L(mod.length)} ${mod.length===1?'item voltou':'itens voltaram'} ao local anterior (${esc(u.de)}).</div>`;toast('Desfeito ✓');
+}
+const irAlerta=()=>{const m=mapaCestas();const a=[...m.values()].filter(c=>c.al).sort(ordCestas)[0];aba('cestas');if(a)abrirCesta(a.k)};
+$('#alertaCes').onclick=irAlerta;$('#alertaCes2').onclick=irAlerta;
+$('#cGrid').addEventListener('click',e=>{const b=e.target.closest('.cx');if(b)abrirCesta(b.dataset.k)});
+$('#cq').addEventListener('input',renderCestas);
+$('#cqx').onclick=()=>{$('#cq').value='';renderCestas();$('#cq').focus()};
+$('#cVolta').onclick=()=>{cSel=null;planoAtual=null;renderCestas();$('#main').scrollTo({top:0})};
+$('#cItens').addEventListener('click',e=>{
+  const s=e.target.closest('.sl[data-s]');
+  if(s){
+    const k=kc(s.dataset.s);
+    const toks=$('#mCods').value.split(/[\s,;]+/).filter(Boolean);
+    const tem=toks.some(t=>kc(t)===k);
+    $('#mCods').value=(tem?toks.filter(t=>kc(t)!==k):[...toks,s.dataset.s]).join(' ');
+    sincSel();$('#mRes').innerHTML='';planoAtual=null;return;
+  }
+  const r=e.target.closest('.ci[data-e]'); if(r)abrirEditarItem(r.dataset.e);
+});
+/* ---- editar item dentro do local ---- */
+function abrirEditarItem(cod){
+  const it=byCod.get(cod); if(!it)return;
+  $('#modal').innerHTML=`<div class="shade" id="shade"><div class="sheet"><div class="grip"></div>
+    <div class="cod" style="font-size:15px${it.pend?';color:var(--warn)':''}">${it.pend?'⏳ SEM CÓDIGO (PENDENTE)':'CÓD '+esc(it.cod)}</div><h2>${esc(it.desc)}</h2>
+    <div class="ajuda" style="margin:-6px 0 14px">📍 ${esc(it.loc||'SEM LOCAL')}</div>
+    <div class="campo"><label>Quantidade${it.un?' ('+esc(it.un)+')':''}</label>
+      <div class="stp big"><button id="eMenos" aria-label="Diminuir">−</button><input id="eQtd" type="text" inputmode="decimal" autocomplete="off" value="${esc(String(it.saldo??0).replace('.',','))}"><button id="eMais" aria-label="Aumentar">+</button></div></div>
+    <button class="btn pri full" id="eSalvar">Salvar quantidade</button>
+    <div class="acoes" style="margin-top:10px"><button class="btn sec" id="eTirar">Tirar deste local</button><button class="btn bad" id="eExcluir">Excluir material</button></div>
+    <p class="ajuda" style="margin:12px 2px 0">“Tirar deste local” mantém o material no cadastro (fica em SEM LOCAL). “Excluir” apaga o material do app. Na próxima importação do MEGA, a quantidade volta a ser a do MEGA.</p>
+  </div></div>`;
+  const inp=$('#eQtd');
+  $('#shade').onclick=e=>{if(e.target.id==='shade')fechar()};
+  const passo=d=>{let n=pq(inp.value);if(isNaN(n))n=+it.saldo||0;inp.value=String(Math.max(0,Math.round((n+d)*1000)/1000)).replace('.',',')};
+  $('#eMenos').onclick=()=>passo(-1); $('#eMais').onclick=()=>passo(1);
+  $('#eSalvar').onclick=async()=>{
+    const n=pq(inp.value); if(isNaN(n)||n<0){toast('Quantidade inválida');return}
+    it.saldo=n; prep(it); await dbPutMany([limpo(it)]); reindex();desenhar();fechar();renderCestas();buzz();toast('Quantidade salva ✓');
+  };
+  $('#eTirar').onclick=async()=>{
+    if(!confirm('Tirar este material de '+(cSel?cSel.nome:'este local')+'? Ele continua cadastrado, em SEM LOCAL.'))return;
+    it.loc=''; prep(it); await dbPutMany([limpo(it)]); reindex();desenhar();fechar();renderCestas();buzz();toast('Tirado do local ✓');
+  };
+  $('#eExcluir').onclick=async()=>{
+    if(!confirm('Excluir este material do app?'))return;
+    await dbDel(cod); items=items.filter(i=>i.cod!==cod); reindex();desenhar();recentes();fechar();renderCestas();toast('Material excluído');
+  };
+}
+/* ---- adicionar material no local ---- */
+async function adicionarNoLocal(){
+  const out=$('#aRes'), er=t=>{out.innerHTML=`<div class="res err">⚠️ ${t}</div>`};
+  if(!cSel)return;
+  const cod0=$('#aCod').value.trim(); if(!cod0)return er('Digite o código.');
+  const qtxt=$('#aQtd').value.trim(), q=qtxt===''?null:pq(qtxt);
+  if(qtxt!==''&&(isNaN(q)||q<0))return er('Quantidade inválida.');
+  const loc=cSel.k==='sem local'?'':cSel.nome;
+  let it=byCod.get(cod0)||items.find(i=>!i.pend&&kc(i.cod)===kc(cod0)), msg;
+  if(it){
+    const aqui=cKey(it.loc)===cSel.k;
+    if(aqui&&q===null)return er('Esse material já está neste local. Para mudar a quantidade, toque nele na lista.');
+    if(!aqui&&it.loc&&!confirm('O código '+it.cod+' está em '+cNome(it.loc)+'. Trazer para '+cSel.nome+'?'))return;
+    it.loc=loc; if(q!==null)it.saldo=q; prep(it);
+    msg=`✅ <b>${esc(it.cod)}</b> ${aqui?'atualizado':'agora está'} em <b>${esc(cSel.nome)}</b>${q!==null?` com quantidade <b>${L(q)}</b>`:''}.`;
+  }else{
+    const desc=$('#aDesc').value.trim(); if(!desc)return er('Esse código ainda não está cadastrado: informe a descrição.');
+    it=prep({cod:cod0,desc,un:$('#aUn').value.trim(),saldo:q||0,loc,ficha:'',cat:''}); items.push(it);
+    msg=`✅ Material novo <b>${esc(cod0)}</b> cadastrado em <b>${esc(cSel.nome)}</b> com quantidade <b>${L(q||0)}</b>.`;
+  }
+  await dbPutMany([limpo(it)]); reindex();desenhar();recentes();renderCestas();buzz();
+  ['aCod','aQtd','aUn','aDesc'].forEach(i=>$('#'+i).value='');
+  $('#aRes').innerHTML=`<div class="res">${msg}</div>`; toast('Adicionado ✓');
+}
+$('#aOk').onclick=adicionarNoLocal;
+$('#mCods').addEventListener('input',()=>{sincSel();planoAtual=null;$('#mRes').innerHTML=''});
+$('#mConf').onclick=()=>mostrarPlano(false);
+$('#mAll').onclick=()=>mostrarPlano(true);
+$('#mRes').addEventListener('click',e=>{
+  if(e.target.closest('#mOk'))aplicarMover();
+  else if(e.target.closest('#mDesf'))desfazerMover();
+  else if(e.target.closest('#mIr')&&ultimoMov)abrirCesta(cKey(ultimoMov.dest));
+});
+/* ---- renomear cesta ---- */
+let planoRen=null;
+function mostrarRenomear(){
+  const out=$('#rRes'); planoRen=null; const m=mapaCestas(), c=m.get(cSel.k);
+  const novo=cDestino($('#rNovo').value), nk=cKey(novo);
+  const erro=t=>{out.innerHTML=`<div class="res err">⚠️ ${t}</div>`};
+  if(!$('#rNovo').value.trim())return erro('Digite o novo número da cesta.');
+  if(cSel.k==='sem local')return erro('"SEM LOCAL" não é uma cesta para renomear. Use "Mover itens".');
+  if(!c||!c.itens.length)return erro('Esta cesta está vazia, não há o que renomear.');
+  if(/renumerar/i.test(novo))return erro('Escolha um número ou nome normal.');
+  if(nk===cSel.k)return erro('O novo número é igual ao atual.');
+  const conf=(m.get(nk)||{itens:[]}).itens, pend=novo+' (RENUMERAR)';
+  planoRen={ok:c.itens.slice(),conf:conf.slice(),dest:novo,de:cSel.nome,pend,nk};
+  let h=`<div class="res"><div class="pl"><b>${esc(cSel.nome)}</b> → <b>${esc(novo)}</b> (${L(c.itens.length)} ${c.itens.length===1?'item':'itens'})</div>`;
+  if(conf.length)h+=`<div class="pl w">⚠️ ${esc(novo)} já existe com ${L(conf.length)} ${conf.length===1?'item':'itens'}. Ela fica <b>PENDENTE</b> como <b>${esc(pend)}</b> até você renomear com um número novo. O número ${esc(novo)} passa a ser desta cesta.</div>`;
+  h+=`</div><button class="btn pri full" id="rOk" style="margin-top:12px">✅ Confirmar renomear para ${esc(novo)}</button>`;
+  out.innerHTML=h;
+}
+async function aplicarRenomear(){
+  const p=planoRen; if(!p)return; planoRen=null;
+  const ant=[...p.ok,...p.conf].map(i=>({cod:i.cod,loc:i.loc}));
+  p.conf.forEach(i=>{i.loc=p.pend;prep(i)}); p.ok.forEach(i=>{i.loc=p.dest;prep(i)});
+  await dbPutMany([...p.conf,...p.ok].map(limpo));
+  ultimoMov={ant,dest:p.dest,de:p.de,onde:'#rRes'};
+  cSel={k:p.nk,nome:p.dest}; reindex();desenhar();recentes();renderCestas(); buzz();
+  $('#rNovo').value='';$('#mRes').innerHTML='';
+  $('#rRes').innerHTML=`<div class="res">✅ <b>${esc(p.de)}</b> agora é <b>${esc(p.dest)}</b> (${L(p.ok.length)} ${p.ok.length===1?'item':'itens'}).${p.conf.length?`<br>⚠️ A outra ${esc(p.dest)} (${L(p.conf.length)} ${p.conf.length===1?'item':'itens'}) ficou como <b>${esc(p.pend)}</b>: renumere quando puder.`:''}</div><div class="acoes" style="margin-top:12px"><button class="btn sec" id="mDesf">↩️ Desfazer</button></div>`;
+  toast('Cesta renomeada ✓');
+}
+$('#rConf').onclick=mostrarRenomear;
+$('#rRes').addEventListener('click',e=>{if(e.target.closest('#rOk'))aplicarRenomear();else if(e.target.closest('#mDesf'))desfazerMover()});
+
+/* ===================== conferência de estoque ===================== */
+/* conf[cod] = {q: quantidade contada, base: saldo do MEGA na hora da contagem, t: data,
+   x: true se foi achado em local diferente do cadastrado, l: chave do local, ln: nome do local, d/u: descrição/unid. se não cadastrado} */
+let conf={};
+try{conf=JSON.parse(localStorage.getItem('estoque-conf')||'{}')||{}}catch(e){conf={}}
+function salvarConf(){try{localStorage.setItem('estoque-conf',JSON.stringify(conf))}catch(e){toast('Não consegui guardar a conferência neste aparelho')}}
+let kSel=null, qSub='locais', kFiltro='todos';
+const som=(a,b)=>Math.round((a+b)*1000)/1000;
+const dif=(a,b)=>Math.round((a-b)*1000)/1000;
+const dataFmt=t=>{const d=new Date(t);return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};
+function rowConf(cod,k){
+  const it=byCod.get(cod), e=conf[cod]||null;
+  return {cod,desc:it?it.desc:((e&&e.d)||'(material não cadastrado)'),un:it?(it.un||''):((e&&e.u)||''),sis:it?(+it.saldo||0):0,reg:!!it,onde:it?cNome(it.loc):'',
+    c:e&&(!e.x||e.l===k)?e:null, extra:!!(e&&e.x&&e.l===k&&(!it||cKey(it.loc)!==k))};
+}
+function itensConf(k,m){
+  m=m||mapaCestas(); const c=m.get(k), rows=[], seen=new Set();
+  if(c)for(const it of c.itens){if(it.pend)continue;seen.add(it.cod);rows.push(rowConf(it.cod,k))}
+  for(const cod in conf){const e=conf[cod];if(e.x&&e.l===k&&!seen.has(cod)){seen.add(cod);rows.push(rowConf(cod,k))}}
+  return rows.sort((a,b)=>String(a.desc).localeCompare(String(b.desc),'pt-BR'));
+}
+const difRow=r=>r.c?dif(r.c.q,r.sis):null;
+function estadoLocal(rows){
+  let cf=0,ok=0,bx=0,ps=0;
+  for(const r of rows){const d=difRow(r);if(d===null)continue;cf++;if(d===0)ok++;else if(d<0)bx++;else ps++}
+  return {n:rows.length,cf,ok,bx,ps,div:bx+ps};
+}
+function locaisConf(){
+  const m=mapaCestas(), ks=new Set(m.keys()), fb={};
+  for(const cod in conf){const e=conf[cod];if(e.x&&e.l){ks.add(e.l);if(e.ln)fb[e.l]=e.ln}}
+  const out=[];
+  for(const k of ks){
+    const c=m.get(k), rows=itensConf(k,m), mm=/^cesta (\d+)$/.exec(k);
+    if(!rows.length)continue;
+    out.push({k,nome:c?c.nome:(fb[k]||cNome(k)),n:c?c.n:(mm?+mm[1]:null),al:c?c.al:false,rows,est:estadoLocal(rows)});
+  }
+  return out.sort(ordCestas);
+}
+function acaoHTML(d){
+  if(d===null)return '<div class="cfa nv">Ainda não conferido</div>';
+  if(d===0)return '<div class="cfa ok">✅ Confere com o MEGA</div>';
+  if(d<0)return `<div class="cfa bx">⬇️ Dar <b>BAIXA de ${fmtN(-d)}</b> no MEGA</div>`;
+  return `<div class="cfa ps">⬆️ Dar <b>SALDO POSITIVO de ${fmtN(d)}</b> no MEGA</div>`;
+}
+function cfCard(r){
+  const d=difRow(r), st=d===null?'nv':d===0?'ok':d<0?'bx':'ps';
+  const mud=r.c&&r.c.base!==undefined&&Math.abs(r.c.base-r.sis)>1e-9?`<div class="cfn">⚠️ O saldo do MEGA mudou depois da contagem (era ${fmtN(r.c.base)}).</div>`:'';
+  const tag=r.extra?`<span class="tg">ENCONTRADO AQUI${r.reg?' · cadastrado em '+esc(r.onde||'SEM LOCAL'):' · NÃO CADASTRADO'}</span>`:'';
+  return `<div class="cf glass ${st}" data-c="${esc(r.cod)}">
+    <div class="top2"><span class="cc">${esc(r.cod)}</span><span class="cd">${esc(r.desc)}</span></div>${tag}
+    <div class="cfg">
+      <div><small>SISTEMA</small><div class="v">${fmtN(r.sis)}<em>${esc(r.un)}</em></div></div>
+      <div><small>CONTADO</small><div class="stp"><button data-a="m" aria-label="Diminuir">−</button><input data-q="1" type="text" inputmode="decimal" autocomplete="off" placeholder="—" value="${r.c?esc(String(r.c.q).replace('.',',')):''}"><button data-a="p" aria-label="Aumentar">+</button></div></div>
+      <div class="df"><small>DIFERENÇA</small><div class="v">${d===null?'—':(d>0?'+':'')+fmtN(d)}</div></div>
+    </div>
+    ${acaoHTML(d)}${mud}
+    <div class="cfb"><button class="btn sec sm" data-a="ok">✓ Confere</button>${r.extra||!r.reg?'':'<button class="btn sec sm" data-a="solto">Não está aqui</button>'}<button class="btn sec sm" data-a="x">${r.extra?'Remover':'Limpar'}</button></div>
+  </div>`;
+}
+function renderConf(){
+  $$('#kSeg button').forEach(b=>b.classList.toggle('on',b.dataset.q===qSub));
+  ['locais','ajustes','io'].forEach(x=>$('#q-'+x).classList.toggle('hidden',x!==qSub));
+  if(qSub==='locais')renderKLocais(); else if(qSub==='ajustes')renderAjustes(); else renderIO();
+}
+function renderKLocais(){
+  if(kSel){$('#kLista').classList.add('hidden');$('#kDet').classList.remove('hidden');renderKDet();return}
+  $('#kDet').classList.add('hidden');$('#kLista').classList.remove('hidden');
+  const q=norm($('#kq').value).trim(); $('#kqx').classList.toggle('hidden',!q);
+  let ls=locaisConf(); const total=ls.length;
+  const t=ls.reduce((a,l)=>({n:a.n+l.est.n,cf:a.cf+l.est.cf,div:a.div+l.est.div}),{n:0,cf:0,div:0});
+  if(q)ls=ls.filter(c=>c.k.includes(q)||(c.n!==null&&String(c.n).startsWith(q)));
+  $('#kInfo').innerHTML=total?(q?`${ls.length} de ${total} locais. `:`${total} locais. `)+`${L(t.cf)} de ${L(t.n)} itens conferidos`+(t.div?` · <b style="color:var(--bad)">${L(t.div)} com diferença</b>`:''):'';
+  $('#kGrid').innerHTML=ls.length?ls.map(l=>{
+    const e=l.est, cls=e.cf===0?'':e.div?'s-bad':e.cf>=e.n?'s-ok':'s-mid';
+    return `<button class="cx ${cls}" data-k="${esc(l.k)}"><span class="lb">${l.al?'⚠️ RENUMERAR':'LOCAL'}</span><b class="t">${esc(l.nome.replace(/\s*\(RENUMERAR\)\s*$/i,''))}</b><small>${e.cf}/${e.n} conferidos</small>${e.div?`<small class="dv">${e.div} com diferença</small>`:''}</button>`}).join('')
+    :`<div class="ajuda" style="grid-column:1/-1">${q?'Nenhum local encontrado.':'Nenhum material cadastrado ainda. Importe o cadastro e o saldo do MEGA primeiro.'}</div>`;
+}
+function renderKDet(){
+  const rows=itensConf(kSel.k), e=estadoLocal(rows);
+  $('#kTit').textContent=kSel.nome;
+  $('#kSub').innerHTML=`${L(e.n)} ${e.n===1?'item':'itens'} · <b style="color:var(--ok)">${L(e.cf)} conferido${e.cf===1?'':'s'}</b>`+(e.div?` · <b style="color:var(--bad)">${L(e.div)} com diferença</b>`:'')+(e.n-e.cf?` · ${L(e.n-e.cf)} faltando`:'');
+  $$('#kChips .chip').forEach(c=>c.classList.toggle('on',c.dataset.kf===kFiltro));
+  let v=rows;
+  if(kFiltro==='falta')v=rows.filter(r=>!r.c); else if(kFiltro==='div')v=rows.filter(r=>{const d=difRow(r);return d!==null&&d!==0});
+  $('#kItens').innerHTML=v.length?v.map(cfCard).join(''):`<div class="vazio"><div class="big">${kFiltro==='todos'?'📦':'✅'}</div>${kFiltro==='todos'?'Este local não tem itens.':kFiltro==='falta'?'Nada faltando conferir.':'Nenhuma diferença neste local.'}</div>`;
+}
+function cfSet(cod,q){
+  const it=byCod.get(cod), prev=conf[cod];
+  if(q===null)delete conf[cod]; else conf[cod]={...(prev||{}),q,base:it?(+it.saldo||0):0,t:Date.now()};
+  salvarConf();
+  const el=[...$$('#kItens .cf')].find(x=>x.dataset.c===cod);
+  if(el&&kFiltro==='todos'&&(conf[cod]||byCod.has(cod))){
+    el.outerHTML=cfCard(rowConf(cod,kSel.k));
+    const e=estadoLocal(itensConf(kSel.k));
+    $('#kSub').innerHTML=`${L(e.n)} ${e.n===1?'item':'itens'} · <b style="color:var(--ok)">${L(e.cf)} conferido${e.cf===1?'':'s'}</b>`+(e.div?` · <b style="color:var(--bad)">${L(e.div)} com diferença</b>`:'')+(e.n-e.cf?` · ${L(e.n-e.cf)} faltando`:'');
+  }else renderKDet();
+}
+$('#kItens').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-a]'); if(!b||!kSel)return;
+  const cod=b.closest('.cf').dataset.c, r=rowConf(cod,kSel.k), a=b.dataset.a, atual=r.c?r.c.q:r.sis;
+  if(a==='m')cfSet(cod,Math.max(0,som(atual,-1)));
+  else if(a==='p')cfSet(cod,som(atual,1));
+  else if(a==='ok')cfSet(cod,r.sis);
+  else if(a==='x')cfSet(cod,null);
+  else if(a==='solto'){soltarItem(cod);return}
+  buzz();
+});
+/* item que não está fisicamente neste local: sai do local e fica solto (SEM LOCAL), fora da conferência */
+async function soltarItem(cod){
+  const it=byCod.get(cod); if(!it||!kSel)return;
+  if(!confirm('Tirar '+cod+' de '+kSel.nome+'? Ele continua cadastrado, solto (SEM LOCAL), e sai desta conferência.'))return;
+  it.loc=''; prep(it); delete conf[cod]; salvarConf();
+  await dbPutMany([limpo(it)]); reindex();desenhar();
+  renderKDet();buzz();toast('Item solto, sem local ✓');
+}
+$('#kItens').addEventListener('change',e=>{
+  const inp=e.target.closest('input[data-q]'); if(!inp||!kSel)return;
+  const cod=inp.closest('.cf').dataset.c, v=inp.value.trim();
+  if(v===''){cfSet(cod,null);return}
+  const n=pq(v); if(isNaN(n)||n<0){toast('Quantidade inválida');renderKDet();return}
+  cfSet(cod,n);
+});
+$('#kItens').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input[data-q]'))e.target.blur()});
+$('#kChips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;kFiltro=b.dataset.kf;renderKDet()});
+$('#kTodos').onclick=()=>{
+  const rows=itensConf(kSel.k).filter(r=>!r.c);
+  if(!rows.length){toast('Nada faltando conferir');return}
+  if(!confirm('Marcar '+rows.length+' '+(rows.length===1?'item':'itens')+' como conferidos, com a quantidade igual ao MEGA?'))return;
+  rows.forEach(r=>{conf[r.cod]={...(conf[r.cod]||{}),q:r.sis,base:r.sis,t:Date.now()}});
+  salvarConf();renderKDet();buzz();toast('Marcados ✓');
+};
+$('#kGrid').addEventListener('click',e=>{
+  const b=e.target.closest('.cx');if(!b)return;
+  const l=locaisConf().find(x=>x.k===b.dataset.k);
+  kSel={k:b.dataset.k,nome:l?l.nome:cNome(b.dataset.k)};kFiltro='todos';
+  $('#xRes').innerHTML='';['xCod','xQtd','xUn','xDesc'].forEach(i=>$('#'+i).value='');
+  renderKLocais();$('#main').scrollTo({top:0});
+});
+$('#kVolta').onclick=()=>{kSel=null;renderKLocais();$('#main').scrollTo({top:0})};
+$('#kq').addEventListener('input',renderKLocais);
+$('#kqx').onclick=()=>{$('#kq').value='';renderKLocais();$('#kq').focus()};
+$('#kSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;qSub=b.dataset.q;renderConf();$('#main').scrollTo({top:0})});
+/* achei algo que não está na lista */
+$('#xOk').onclick=()=>{
+  const out=$('#xRes'), er=t=>{out.innerHTML=`<div class="res err">⚠️ ${t}</div>`};
+  if(!kSel)return;
+  const cod0=$('#xCod').value.trim(); if(!cod0)return er('Digite o código.');
+  const q=pq($('#xQtd').value); if(isNaN(q)||q<0)return er('Digite a quantidade contada.');
+  const it=byCod.get(cod0)||items.find(i=>!i.pend&&kc(i.cod)===kc(cod0)), cod=it?it.cod:cod0;
+  let msg;
+  if(it&&cKey(it.loc)===kSel.k){
+    conf[cod]={...(conf[cod]||{}),q,base:+it.saldo||0,t:Date.now()};
+    msg=`ℹ️ O material <b>${esc(cod)}</b> já faz parte deste local: contagem registrada na lista.`;
+  }else{
+    const desc=$('#xDesc').value.trim();
+    if(!it&&!desc)return er('Esse código não está cadastrado: informe a descrição.');
+    conf[cod]={...(conf[cod]||{}),q,base:it?(+it.saldo||0):0,t:Date.now(),l:kSel.k,ln:kSel.nome,x:true,...(it?{}:{d:desc,u:$('#xUn').value.trim()})};
+    msg=`✅ <b>${esc(cod)}</b> adicionado à conferência de <b>${esc(kSel.nome)}</b> com <b>${fmtN(q)}</b> contado${it?'':' (não cadastrado)'}.`;
+  }
+  salvarConf();['xCod','xQtd','xUn','xDesc'].forEach(i=>$('#'+i).value='');
+  renderKDet();$('#xRes').innerHTML=`<div class="res">${msg}</div>`;buzz();
+};
+/* resumo do que ajustar no MEGA */
+function difsGerais(){
+  const out=[];
+  for(const l of locaisConf())for(const r of l.rows){const d=difRow(r);if(d!==null&&d!==0)out.push({l,r,d})}
+  return out;
+}
+function renderAjustes(){
+  const ls=locaisConf(), box=$('#q-ajustes'); let nb=0,np=0,h='';
+  for(const l of ls){
+    const dd=l.rows.map(r=>({r,d:difRow(r)})).filter(x=>x.d!==null&&x.d!==0);
+    if(!dd.length)continue;
+    h+=`<div class="box glass"><h3 class="neon">${esc(l.nome)}</h3>`+dd.map(({r,d})=>{
+      d<0?nb++:np++;
+      return `<div class="aj ${d<0?'bx':'ps'}"><div><b class="k">${esc(r.cod)}</b><p>${esc(r.desc)}</p><small>MEGA ${fmtN(r.sis)} → contado ${fmtN(r.c.q)} ${esc(r.un)}</small>${r.extra?`<br><small style="color:var(--warn)">${r.reg?'achado aqui, mas cadastrado em '+esc(r.onde||'SEM LOCAL'):'material não cadastrado'}</small>`:''}</div><div class="ac">${d<0?'DAR BAIXA':'SALDO POSITIVO'}<b>${d<0?'−':'+'}${fmtN(Math.abs(d))}</b></div></div>`}).join('')+'</div>';
+  }
+  const conferidos=ls.reduce((a,l)=>a+l.est.cf,0);
+  if(!nb&&!np){
+    box.innerHTML=`<div class="vazio"><div class="big">${conferidos?'✅':'📋'}</div>${conferidos?'Tudo o que você conferiu bate com o MEGA.':'Ainda não há nada conferido.'}<br>${conferidos?'Não há baixa nem saldo positivo para lançar.':'Abra um local na aba <b>Conferir</b> e informe a quantidade contada.'}</div>`;
+    return;
+  }
+  box.innerHTML=`<div class="box glass"><h3 class="neon">O que lançar no MEGA</h3>
+    <div class="pl"><b style="color:var(--bad)">${L(nb)}</b> ${nb===1?'item':'itens'} para <b>dar baixa</b></div>
+    <div class="pl"><b style="color:var(--acc)">${L(np)}</b> ${np===1?'item':'itens'} para <b>dar saldo positivo</b></div>
+    <p class="ajuda" style="margin:8px 0 12px">Depois de lançar no MEGA, importe o saldo do MEGA de novo (Cadastro → Importar): as diferenças somem sozinhas.</p>
+    <button class="btn pri full" id="kWord">📄 Exportar Word (Ajustes no MEGA)</button>
+    <button class="btn sec full" id="kCopiar" style="margin-top:8px">📋 Copiar lista</button><div id="kWordRes"></div></div>`+h;
+}
+function textoAjustes(){
+  let t='AJUSTES NO MEGA - conferência de '+new Date().toLocaleDateString('pt-BR')+'\n';
+  for(const l of locaisConf()){
+    const dd=l.rows.map(r=>({r,d:difRow(r)})).filter(x=>x.d!==null&&x.d!==0); if(!dd.length)continue;
+    t+='\n'+l.nome+'\n';
+    for(const {r,d} of dd)t+=`${r.cod} - ${r.desc} | ${d<0?'DAR BAIXA':'SALDO POSITIVO'} ${fmtN(Math.abs(d))} ${r.un} (MEGA ${fmtN(r.sis)} / contado ${fmtN(r.c.q)})${r.extra?(r.reg?' [achado aqui, cadastrado em '+(r.onde||'SEM LOCAL')+']':' [não cadastrado]'):''}\n`;
+  }
+  return t;
+}
+async function copiar(t){
+  try{await navigator.clipboard.writeText(t);return true}
+  catch(e){try{const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();return ok}catch(e2){return false}}
+}
+$('#q-ajustes').addEventListener('click',async e=>{
+  if(e.target.closest('#kWord')){exportarWord('#kWordRes');return}
+  if(!e.target.closest('#kCopiar'))return;
+  toast(await copiar(textoAjustes())?'Lista copiada ✓':'Não consegui copiar');
+});
+/* importar / exportar só a conferência */
+function renderIO(){
+  const ls=locaisConf(), n=ls.reduce((a,l)=>a+l.est.n,0), cf=ls.reduce((a,l)=>a+l.est.cf,0), dv=ls.reduce((a,l)=>a+l.est.div,0);
+  $('#kInfoExp').innerHTML=n?`<b>${L(n)}</b> itens em <b>${L(ls.length)}</b> locais · <b>${L(cf)}</b> conferidos${dv?` · <b style="color:var(--bad)">${L(dv)}</b> com diferença`:''}.`:'Não há itens para exportar ainda.';
+}
+function xlsxGenerico(aba,cols,linhas,larg){
+  const LT='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const lin=(r,vals,sty)=>`<row r="${r}">`+vals.map((v,i)=>celXML(LT[i]+r,sty,v)).join('')+'</row>';
+  let rows=lin(1,cols,'1'); linhas.forEach((v,k)=>{rows+=lin(k+2,v,'')});
+  const n=linhas.length+1, ult=LT[cols.length-1];
+  const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+   +`<dimension ref="A1:${ult}${n}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+   +'<cols>'+larg.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols>'
+   +`<sheetData>${rows}</sheetData><autoFilter ref="A1:${ult}${n}"/></worksheet>`;
+  const arq={
+   '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+   '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+   'xl/workbook.xml':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${aba}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+   'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+   'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
+   'xl/worksheets/sheet1.xml':sheet};
+  const te=new TextEncoder(), lista=[];
+  for(const nome in arq){const b=te.encode(arq[nome]);lista.push({nome,nomeB:te.encode(nome),flags:0x0800,meth:0,time:0,date:0x21,crc:crc32(b),cs:b.length,us:b.length,dados:b})}
+  return zipEscrever(lista);
+}
+function baixar(blob,nome){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
+/* ---- Word "Ajustes no MEGA": mesmo formato da planilha de conferência (uma tabela por local) ---- */
+const xe=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function wRun(t,o={}){return `<w:r><w:rPr>${o.b?'<w:b/><w:bCs/>':''}${o.c?`<w:color w:val="${o.c}"/>`:''}<w:sz w:val="${o.sz||18}"/><w:szCs w:val="${o.sz||18}"/></w:rPr><w:t xml:space="preserve">${xe(t)}</w:t></w:r>`}
+function wCel(w,t,o={}){
+  const bd=['top','left','bottom','right'].map(l=>`<w:${l} w:val="single" w:sz="4" w:space="0" w:color="999999"/>`).join('');
+  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:tcBorders>${bd}</w:tcBorders>${o.fill?`<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>`:''}<w:tcMar><w:top w:w="60" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar></w:tcPr><w:p>${o.ctr?'<w:pPr><w:jc w:val="center"/></w:pPr>':''}${wRun(t,o)}</w:p></w:tc>`;
+}
+const W_COLS=[900,4200,1500,1000,900,900];
+function wTabela(linhas){
+  const cab=['Código','Descrição','Ação','Qtd.','MEGA','Contado'];
+  let h='<w:tbl><w:tblPr><w:tblW w:w="9400" w:type="dxa"/><w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(l=>`<w:${l} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`).join('')+'</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblLook w:val="0000"/></w:tblPr><w:tblGrid>'+W_COLS.map(w=>`<w:gridCol w:w="${w}"/>`).join('')+'</w:tblGrid>';
+  h+='<w:tr><w:trPr><w:tblHeader/></w:trPr>'+cab.map((t,i)=>wCel(W_COLS[i],t,{b:1,fill:'D9E2F3',ctr:i>1})).join('')+'</w:tr>';
+  for(const l of linhas)h+='<w:tr><w:trPr><w:cantSplit/></w:trPr>'+[wCel(W_COLS[0],l[0]),wCel(W_COLS[1],l[1]),wCel(W_COLS[2],l[2],{b:1,c:l[6]?'C00000':'2E7D32',ctr:1}),wCel(W_COLS[3],l[3],{ctr:1}),wCel(W_COLS[4],l[4],{ctr:1}),wCel(W_COLS[5],l[5],{ctr:1})].join('')+'</w:tr>';
+  return h+'</w:tbl><w:p/>';
+}
+function docxAjustes(dataTxt){
+  let corpo=`<w:p><w:pPr><w:pStyle w:val="Ttulo"/></w:pPr>${wRun('Ajustes no MEGA',{sz:36,b:1})}</w:p><w:p><w:pPr><w:spacing w:after="200"/></w:pPr>${wRun('Conferência de '+dataTxt,{c:'555555',sz:22})}</w:p>`;
+  let n=0;
+  for(const l of locaisConf()){
+    const ln=[];
+    for(const r of l.rows){const d=difRow(r);if(d===null||d===0)continue;ln.push([r.cod,r.desc||'',d<0?'Dar baixa':'Saldo positivo',fmtN(Math.abs(d))+(r.un?' '+r.un:''),fmtN(r.sis),fmtN(r.c.q),d<0])}
+    if(!ln.length)continue; n+=ln.length;
+    corpo+=`<w:p><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="100"/></w:pPr>${wRun(l.nome.replace(/\s*\(RENUMERAR\)\s*$/i,''),{b:1,c:'1F3864',sz:24})}</w:p>`+wTabela(ln);
+  }
+  if(!n)return null;
+  const ns='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  const arq={
+   '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
+   '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+   'word/_rels/document.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+   'word/styles.xml':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${ns}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:lang w:val="pt-BR" w:eastAsia="pt-BR" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="Ttulo"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="60"/></w:pPr><w:rPr><w:b/><w:bCs/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style></w:styles>`,
+   'word/document.xml':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${ns}><w:body>${corpo}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1253" w:bottom="1134" w:left="1253" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`};
+  const te=new TextEncoder(), lista=[];
+  for(const nome in arq){const b=te.encode(arq[nome]);lista.push({nome,nomeB:te.encode(nome),flags:0x0800,meth:0,time:0,date:0x21,crc:crc32(b),cs:b.length,us:b.length,dados:b})}
+  return {blob:zipEscrever(lista,'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),n};
+}
+function exportarWord(alvo){
+  const out=$(alvo); out.innerHTML='';
+  const d=new Date(),p2=n=>String(n).padStart(2,'0');
+  const r=docxAjustes(`${p2(d.getDate())}/${p2(d.getMonth()+1)}/${d.getFullYear()}`);
+  if(!r){out.innerHTML='<div class="res err">⚠️ Não há diferenças para lançar no MEGA. Confira os locais primeiro.</div>';return}
+  const nome=`AJUSTES_MEGA_${p2(d.getDate())}-${p2(d.getMonth()+1)}-${String(d.getFullYear()).slice(2)}_${p2(d.getHours())}h${p2(d.getMinutes())}.docx`;
+  baixar(r.blob,nome); buzz();
+  out.innerHTML=`<div class="res">✅ Arquivo gerado: <b>${esc(nome)}</b><br>📦 ${L(r.n)} ajustes · ${(r.blob.size/1024).toFixed(0)} KB<br><small style="color:var(--mut)">Se o download não abrir, procure em Downloads/Arquivos.</small></div>`;
+  toast('Ajustes exportados ✓');
+}
+const CONF_COLS=['LOCAL','CÓD','DESCRIÇÃO','UNID','SISTEMA (MEGA)','CONTADO','DIFERENÇA','AÇÃO NO MEGA','DATA DA CONTAGEM','OBS'];
+function exportarConf(){
+  const out=$('#kExpRes'); out.innerHTML='';
+  const so=$('#kSoConf').checked, linhas=[];
+  for(const l of locaisConf())for(const r of l.rows){
+    if(so&&!r.c)continue;
+    const d=difRow(r), cod=String(r.cod), numOK=/^[1-9]\d{0,14}$/.test(cod);
+    linhas.push([l.nome,numOK?Number(cod):cod,r.desc||'',r.un||'',r.sis,r.c?r.c.q:'',d===null?'':d,d===null?'':d===0?'OK':d<0?'DAR BAIXA NO MEGA':'DAR SALDO POSITIVO NO MEGA',r.c&&r.c.t?dataFmt(r.c.t):'',r.extra?(r.reg?'ENCONTRADO AQUI':'NÃO CADASTRADO'):'']);
+  }
+  if(!linhas.length){out.innerHTML=`<div class="res err">⚠️ Não há itens ${so?'conferidos ':''}para exportar.</div>`;return}
+  const blob=xlsxGenerico('CONFERENCIA',CONF_COLS,linhas,[22,10,60,8,15,11,12,30,18,18]);
+  const d=new Date(),p2=n=>String(n).padStart(2,'0');
+  const nome=`CONFERENCIA_ESTOQUE_${p2(d.getDate())}-${p2(d.getMonth()+1)}-${String(d.getFullYear()).slice(2)}_${p2(d.getHours())}h${p2(d.getMinutes())}.xlsx`;
+  baixar(blob,nome); buzz();
+  out.innerHTML=`<div class="res">✅ Arquivo gerado: <b>${esc(nome)}</b><br>📦 ${L(linhas.length)} linhas · ${(blob.size/1048576).toFixed(2)} MB<br><small style="color:var(--mut)">Se o download não abrir, procure em Downloads/Arquivos.</small></div>`;
+  toast('Conferência exportada ✓');
+}
+$('#kExp').onclick=exportarConf;
+$('#kExpW').onclick=()=>exportarWord('#kExpWRes');
+const SCF={cod:['cod','codigo'],cont:['contado','contagem','qtd contada','qtde contada','quantidade contada','conferido'],sis:['sistema','sistema mega','saldo sistema','saldo mega','mega','saldo'],loc:['local','localizacao','loc'],desc:['descricao','material'],un:['un','unid','unidade']};
+function mapearConf(rows){
+  for(let i=0;i<Math.min(rows.length,20);i++){
+    const m={};(rows[i]||[]).forEach((c,ci)=>{if(c==null)return;const n=norm(c);for(const k in SCF){if(m[k]===undefined&&SCF[k].includes(n)){m[k]=ci;break}}});
+    if(m.cod===undefined||m.cont===undefined)continue;
+    const itens=[];
+    for(let j=i+1;j<rows.length;j++){
+      const r=rows[j]||[], g=k=>m[k]===undefined?'':String(r[m[k]]??'').trim();
+      let cod=g('cod'); if(/^\d+\.0+$/.test(cod))cod=cod.replace(/\.0+$/,''); if(!cod)continue;
+      const ct=g('cont'); if(ct==='')continue; const q=pq(ct); if(isNaN(q)||q<0)continue;
+      const sv=g('sis'), sis=sv===''?NaN:pq(sv);
+      itens.push({cod,q,sis:isNaN(sis)?null:sis,loc:g('loc'),desc:g('desc'),un:g('un')});
+    }
+    return {itens};
+  }
+  return null;
+}
+async function importarConf(f){
+  const out=$('#kImpRes'); out.innerHTML='<div class="ajuda">Lendo o arquivo…</div>';
+  try{
+    let r;
+    if(/\.(csv|txt)$/i.test(f.name))r=mapearConf(parseCSV(await f.text()));
+    else{ if(f.size>60e6)throw new Error('GRANDE'); try{r=await lerXlsx(await f.arrayBuffer(),null,mapearConf)}catch(e){if(/Não encontrei/.test(e.message))r=null;else throw e} }
+    if(!r)throw new Error('Não encontrei as colunas CÓD e CONTADO. Use um arquivo exportado pela conferência.');
+    if(!r.itens.length)throw new Error('O arquivo não tem nenhuma linha com CONTADO preenchido.');
+    if($('#kSubst').checked)conf={};
+    let n=0,naoCad=0,outros=0;
+    for(const x of r.itens){
+      const it=byCod.get(x.cod), lk=x.loc?cKey(x.loc):'', reg=it?cKey(it.loc):'';
+      const e={q:x.q,base:x.sis!==null?x.sis:(it?(+it.saldo||0):0),t:Date.now()};
+      if(!it||(lk&&lk!==reg)){ e.x=true; e.l=lk||'sem local'; e.ln=x.loc||'SEM LOCAL'; if(!it){e.d=x.desc;e.u=x.un;naoCad++}else outros++ }
+      conf[x.cod]=e; n++;
+    }
+    salvarConf();
+    const dv=difsGerais().length;
+    out.innerHTML=`<div class="res">✅ <b>${L(n)}</b> contagens importadas${r.aba?` da aba <b>${esc(r.aba)}</b>`:''}.<br>${dv?`⚠️ ${L(dv)} com diferença em relação ao saldo atual do app.`:'Todas batem com o saldo atual do app.'}${naoCad?`<br>ℹ️ ${L(naoCad)} de material não cadastrado.`:''}${outros?`<br>ℹ️ ${L(outros)} encontrado${outros===1?'':'s'} em local diferente do cadastro.`:''}</div>`;
+    renderIO();buzz();toast('Conferência importada ✓');
+  }catch(err){
+    const g=/GRANDE/.test(err.message);
+    out.innerHTML=`<div class="res err">⚠️ ${g?'Essa planilha é pesada demais para abrir no celular.':esc(err.message||'Não consegui ler esse arquivo.')}</div>`;
+  }
+}
+$('#kArq').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(f)await importarConf(f)});
+$('#kLimpa').onclick=()=>{
+  const n=Object.keys(conf).length;
+  if(!n){toast('Não há conferência para apagar');return}
+  if(!confirm('Apagar as '+n+' contagens da conferência? Os materiais e saldos não mudam.'))return;
+  conf={};salvarConf();kSel=null;renderConf();toast('Conferência apagada');
+};
+
+/* ===================== navegação ===================== */
+function aba(t){
+  $$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+t));
+  $$('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  $('#main').scrollTo({top:0});
+  if(t==='cestas')renderCestas();
+  if(t==='conf')renderConf();
+}
+$('.nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)aba(b.dataset.t)});
+
+/* ===================== início ===================== */
+(async()=>{
+  aplicar(false);
+  await abrirDB();
+  items=(await dbAll()).map(prep); reindex(); recentes(); desenhar(); status();
+  if(memOnly)toast('Armazenamento indisponível: dados não serão guardados');
+  if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
